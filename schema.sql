@@ -5,10 +5,24 @@ CREATE TABLE IF NOT EXISTS profile (
   handle TEXT NOT NULL DEFAULT '@vayztech',
   bio TEXT NOT NULL DEFAULT 'Next-gen consumer tech, desk architecture & software workflows. Featured on TikTok.',
   avatar_url TEXT NOT NULL DEFAULT '',
+  avatar_color INTEGER NOT NULL DEFAULT 1,
+  bg_image_url TEXT NOT NULL DEFAULT '',
+  bg_blur INTEGER NOT NULL DEFAULT 28,
   tiktok_url TEXT NOT NULL DEFAULT 'https://www.tiktok.com/@vayztech',
   email TEXT NOT NULL DEFAULT 'hello@vayztech.com',
   theme_default TEXT NOT NULL DEFAULT 'light',
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS carousel_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  url TEXT NOT NULL,
+  image_url TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 );
 
 CREATE TABLE IF NOT EXISTS categories (
@@ -16,6 +30,7 @@ CREATE TABLE IF NOT EXISTS categories (
   name TEXT NOT NULL,
   slug TEXT NOT NULL DEFAULT '',
   url TEXT NOT NULL DEFAULT '',
+  display_type TEXT NOT NULL DEFAULT 'filter',
   sort_order INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))

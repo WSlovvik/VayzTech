@@ -19,6 +19,11 @@ export async function onRequestPost(context) {
     const body = await request.json();
     const name = (body.name || '').trim();
     const url = (body.url || '').trim();
+    const display_type = ['filter', 'link', 'section'].includes(body.display_type)
+      ? body.display_type
+      : url
+      ? 'link'
+      : 'filter';
     const active = body.active === false || body.active === 0 ? 0 : 1;
 
     if (!name) {
@@ -32,9 +37,9 @@ export async function onRequestPost(context) {
     const slug = toSlug(name);
 
     await env.DB.prepare(
-      'INSERT INTO categories (name, slug, url, sort_order, active) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO categories (name, slug, url, display_type, sort_order, active) VALUES (?, ?, ?, ?, ?, ?)'
     )
-      .bind(name, slug, url, sort_order, active)
+      .bind(name, slug, url, display_type, sort_order, active)
       .run();
 
     const { results: categories } = await env.DB.prepare(
@@ -78,16 +83,20 @@ export async function onRequestPut(context) {
 
     const name = (body.name || '').trim();
     const url = (body.url || '').trim();
+    const display_type = ['filter', 'link', 'section'].includes(body.display_type)
+      ? body.display_type
+      : url
+      ? 'link'
+      : 'filter';
     const active = body.active === false || body.active === 0 ? 0 : 1;
     const slug = toSlug(name);
 
     await env.DB.prepare(
-      'UPDATE categories SET name = ?, slug = ?, url = ?, active = ? WHERE id = ?'
+      'UPDATE categories SET name = ?, slug = ?, url = ?, display_type = ?, active = ? WHERE id = ?'
     )
-      .bind(name, slug, url, active, id)
+      .bind(name, slug, url, display_type, active, id)
       .run();
 
-    // Also keep legacy category name in sync for links in this category
     await env.DB.prepare('UPDATE links SET category = ? WHERE category_id = ?')
       .bind(name, id)
       .run();

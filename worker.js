@@ -7,6 +7,11 @@ import {
   onRequestDelete as categoriesDelete,
 } from './functions/api/categories.js';
 import {
+  onRequestPost as carouselPost,
+  onRequestPut as carouselPut,
+  onRequestDelete as carouselDelete,
+} from './functions/api/carousel.js';
+import {
   onRequestPost as linksPost,
   onRequestPut as linksPut,
   onRequestDelete as linksDelete,
@@ -38,6 +43,11 @@ export default {
       if (method === 'PUT') return categoriesPut(context);
       if (method === 'DELETE') return categoriesDelete(context);
     }
+    if (path === '/api/carousel') {
+      if (method === 'POST') return carouselPost(context);
+      if (method === 'PUT') return carouselPut(context);
+      if (method === 'DELETE') return carouselDelete(context);
+    }
     if (path === '/api/links') {
       if (method === 'POST') return linksPost(context);
       if (method === 'PUT') return linksPut(context);
@@ -53,7 +63,7 @@ export default {
       return jsonResponse({ ok: false, error: 'Not found' }, 404);
     }
 
-    // Serve static assets (index.html, admin.html, styles.css, app.js, admin.js)
+    // Serve static assets
     if (env.ASSETS) {
       return env.ASSETS.fetch(request);
     }

@@ -5,21 +5,26 @@ const DEFAULT_FALLBACK_STATE = {
   profile: {
     title: 'VayzTech',
     handle: '@vayztech',
-    bio: 'Next-gen consumer tech, desk architecture & software workflows. Featured on TikTok.',
+    bio: 'Next-gen consumer tech, desk architecture & software workflows.\nFeatured on TikTok.',
     avatar_url: '',
+    avatar_color: 1,
+    bg_image_url: '',
+    bg_blur: 28,
     tiktok_url: 'https://www.tiktok.com/@vayztech',
     email: 'hello@vayztech.com',
     theme_default: 'light',
   },
+  carousel: [],
   categories: [
-    { id: 1, name: 'Hardware', slug: 'hardware', url: '', sort_order: 1, active: 1 },
-    { id: 2, name: 'Software', slug: 'software', url: '', sort_order: 2, active: 1 },
-    { id: 3, name: 'Wallpapers', slug: 'wallpapers', url: '', sort_order: 3, active: 1 },
+    { id: 1, name: 'Hardware', slug: 'hardware', url: '', display_type: 'filter', sort_order: 1, active: 1 },
+    { id: 2, name: 'Software', slug: 'software', url: '', display_type: 'filter', sort_order: 2, active: 1 },
+    { id: 3, name: 'Wallpapers', slug: 'wallpapers', url: '', display_type: 'section', sort_order: 3, active: 1 },
     {
       id: 4,
       name: 'TikTok Feed ↗',
       slug: 'tiktok-feed',
       url: 'https://www.tiktok.com/@vayztech',
+      display_type: 'link',
       sort_order: 4,
       active: 1,
     },
@@ -72,6 +77,7 @@ const DEFAULT_FALLBACK_STATE = {
 
 let appState = structuredClone(DEFAULT_FALLBACK_STATE);
 let selectedCategoryId = 'all';
+let activeSlideIdx = 0;
 
 const ICONS = {
   'arrow-up-right': `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>`,
@@ -136,6 +142,7 @@ async function fetchAppData() {
       appState = {
         dbConnected: true,
         profile: data.profile || DEFAULT_FALLBACK_STATE.profile,
+        carousel: Array.isArray(data.carousel) ? data.carousel : [],
         categories: Array.isArray(data.categories) ? data.categories : [],
         links: Array.isArray(data.links) ? data.links : [],
       };
@@ -160,7 +167,7 @@ async function fetchAppData() {
 }
 
 function renderAll() {
-  const { profile, categories, links } = appState;
+  const { profile, carousel, categories, links } = appState;
 
   document.title = `${profile.title} — Links & Curated Tech`;
   document.getElementById('top-handle').textContent = profile.handle || '@vayztech';
@@ -173,10 +180,46 @@ function renderAll() {
     yearEl.textContent = new Date().getFullYear();
   }
 
-  // Avatar (supports uploaded base64, custom URL, or auto-fetched TikTok avatar)
+  // Blurred Background Image Layer
+  const bgWrap = document.getElementById('bg-backdrop-wrap');
+  const bgImg = document.getElementById('bg-backdrop-img');
+  if (bgWrap && bgImg) {
+    if ((profile.bg_image_url || '').trim()) {
+      bgWrap.classList.remove('hidden');
+      bgImg.style.backgroundImage = `url("${profile.bg_image_url.replace(/"/g, '\\"')}")`;
+      const blurPx = Number(profile.bg_blur ?? 28);
+      bgImg.style.filter = `blur(${blurPx}px)`;
+    } else {
+      bgWrap.classList.add('hidden');
+      bgImg.style.backgroundImage = '';
+    }
+  }
+
+  // TikTok & Mail links (Logo click also goes to TikTok)
+  const tiktokHref = profile.tiktok_url || 'https://www.tiktok.com/@vayztech';
+  const emailHref = profile.email
+    ? profile.email.startsWith('mailto:')
+      ? profile.email
+      : `mailto:${profile.email}`
+    : 'mailto:hello@vayztech.com';
+
+  const avatarLink = document.getElementById('avatar-link');
+  if (avatarLink) {
+    avatarLink.href = tiktokHref;
+  }
+
+  document.getElementById('social-tiktok').href = tiktokHref;
+  document.getElementById('footer-tiktok').href = tiktokHref;
+  document.getElementById('social-email').href = emailHref;
+  document.getElementById('footer-email').href = emailHref;
+
+  // Avatar (supports full color or black & white grayscale)
   const avatarImg = document.getElementById('profile-avatar');
   const avatarFallback = document.getElementById('avatar-fallback');
   const avatarInitials = document.getElementById('avatar-initials');
+
+  const isColor = Number(profile.avatar_color ?? 1) !== 0;
+  avatarImg.classList.toggle('is-grayscale', !isColor);
 
   if (profile.avatar_url) {
     avatarImg.src = profile.avatar_url;
@@ -193,29 +236,103 @@ function renderAll() {
     avatarInitials.textContent = getInitials(profile.title);
   }
 
-  // TikTok & Mail links
-  const tiktokHref = profile.tiktok_url || 'https://www.tiktok.com/@vayztech';
-  const emailHref = profile.email
-    ? profile.email.startsWith('mailto:')
-      ? profile.email
-      : `mailto:${profile.email}`
-    : 'mailto:hello@vayztech.com';
-
-  document.getElementById('social-tiktok').href = tiktokHref;
-  document.getElementById('footer-tiktok').href = tiktokHref;
-  document.getElementById('social-email').href = emailHref;
-  document.getElementById('footer-email').href = emailHref;
-
-  renderCategories(categories, links);
+  renderCarousel(carousel);
+  renderCategories(categories);
   renderPublicLinks(categories, links);
 }
 
-function renderCategories(categories, links) {
+function renderCarousel(carouselItems) {
+  const section = document.getElementById('carousel-section');
+  const track = document.getElementById('carousel-track');
+  const controls = document.getElementById('carousel-controls');
+  const dotsEl = document.getElementById('carousel-dots');
+
+  const visibleSlides = (carouselItems || []).filter((s) => Number(s.active) !== 0);
+  if (visibleSlides.length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  section.classList.remove('hidden');
+  track.innerHTML = visibleSlides
+    .map((slide) => {
+      const imgHtml = (slide.image_url || '').trim()
+        ? `<img src="${escapeHtml(slide.image_url)}" alt="${escapeHtml(
+            slide.title
+          )}" class="carousel-slide-img" loading="lazy" />`
+        : `${ICONS['arrow-up-right']}`;
+
+      return `
+        <a href="${escapeHtml(slide.url)}"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="carousel-slide-card">
+          <div class="carousel-slide-media">
+            ${imgHtml}
+          </div>
+          <div class="carousel-slide-content">
+            <h3 class="carousel-slide-title">${escapeHtml(slide.title)}</h3>
+            ${
+              slide.description
+                ? `<p class="carousel-slide-desc">${escapeHtml(slide.description)}</p>`
+                : ''
+            }
+          </div>
+          <div class="link-card-right" aria-hidden="true">
+            ${ICONS['arrow-up-right']}
+          </div>
+        </a>
+      `;
+    })
+    .join('');
+
+  if (visibleSlides.length > 1) {
+    controls.classList.remove('hidden');
+    if (activeSlideIdx >= visibleSlides.length) activeSlideIdx = 0;
+
+    dotsEl.innerHTML = visibleSlides
+      .map(
+        (_, idx) =>
+          `<button type="button" class="carousel-dot ${
+            idx === activeSlideIdx ? 'active' : ''
+          }" data-slide-idx="${idx}" aria-label="Slide ${idx + 1}"></button>`
+      )
+      .join('');
+
+    const scrollToSlide = (idx) => {
+      activeSlideIdx = (idx + visibleSlides.length) % visibleSlides.length;
+      const cards = track.querySelectorAll('.carousel-slide-card');
+      if (cards[activeSlideIdx]) {
+        cards[activeSlideIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+      dotsEl.querySelectorAll('.carousel-dot').forEach((d, i) => {
+        d.classList.toggle('active', i === activeSlideIdx);
+      });
+    };
+
+    dotsEl.querySelectorAll('.carousel-dot').forEach((dot) => {
+      dot.addEventListener('click', () => {
+        scrollToSlide(Number(dot.getAttribute('data-slide-idx')));
+      });
+    });
+
+    document.getElementById('carousel-prev').onclick = () => scrollToSlide(activeSlideIdx - 1);
+    document.getElementById('carousel-next').onclick = () => scrollToSlide(activeSlideIdx + 1);
+  } else {
+    controls.classList.add('hidden');
+  }
+}
+
+function renderCategories(categories) {
   const visibleCats = (categories || []).filter((c) => Number(c.active) !== 0);
+  // Only 'filter' and 'link' categories appear in the top segmented pill bar
+  // ('section' categories appear as left-aligned headings above their links)
+  const barCats = visibleCats.filter((c) => c.display_type !== 'section');
+
   const navWrap = document.getElementById('category-nav-wrap');
   const segmented = document.getElementById('category-segmented');
 
-  if (visibleCats.length === 0) {
+  if (barCats.length === 0) {
     navWrap.classList.add('hidden');
     selectedCategoryId = 'all';
     return;
@@ -227,11 +344,10 @@ function renderCategories(categories, links) {
     selectedCategoryId === 'all' ? 'active' : ''
   }" data-cat-id="all">All</button>`;
 
-  const catPills = visibleCats
+  const catPills = barCats
     .map((cat) => {
-      const hasUrl = Boolean((cat.url || '').trim());
-      if (hasUrl) {
-        // Clickable category styled identically to an active category pill!
+      const isLink = cat.display_type === 'link' || Boolean((cat.url || '').trim());
+      if (isLink && (cat.url || '').trim()) {
         return `<a href="${escapeHtml(
           cat.url
         )}" target="_blank" rel="noopener noreferrer" class="segment-btn active segment-link-pill">${escapeHtml(
@@ -250,76 +366,117 @@ function renderCategories(categories, links) {
   segmented.querySelectorAll('button[data-cat-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
       selectedCategoryId = btn.getAttribute('data-cat-id') || 'all';
-      renderCategories(appState.categories, appState.links);
+      renderCategories(appState.categories);
       renderPublicLinks(appState.categories, appState.links);
     });
   });
 }
 
+function buildLinkCardHtml(link) {
+  const iconSvg = ICONS[link.icon] || ICONS['arrow-up-right'];
+  const hasImage = Boolean((link.image_url || '').trim());
+
+  const mediaHtml = hasImage
+    ? `<div class="link-thumb-box"><img src="${escapeHtml(
+        link.image_url
+      )}" alt="${escapeHtml(link.title)}" class="link-thumb-img" loading="lazy" /></div>`
+    : `<div class="link-icon-box" aria-hidden="true">${iconSvg}</div>`;
+
+  const badgeHtml = link.badge
+    ? `<span class="link-badge">${escapeHtml(link.badge)}</span>`
+    : '';
+  const subtitleHtml = link.subtitle
+    ? `<p class="link-subtitle">${escapeHtml(link.subtitle)}</p>`
+    : '';
+
+  return `
+    <a href="${escapeHtml(link.url)}"
+       target="_blank"
+       rel="noopener noreferrer"
+       class="link-card"
+       data-link-id="${link.id}">
+      <div class="link-card-left">
+        ${mediaHtml}
+        <div class="link-text-group">
+          <div class="link-title-line">
+            <span class="link-title">${escapeHtml(link.title)}</span>
+            ${badgeHtml}
+          </div>
+          ${subtitleHtml}
+        </div>
+      </div>
+      <div class="link-card-right" aria-hidden="true">
+        ${ICONS['arrow-up-right']}
+      </div>
+    </a>
+  `;
+}
+
 function renderPublicLinks(categories, links) {
   const container = document.getElementById('links-list');
-  const selectedCatObj = (categories || []).find(
-    (c) => String(c.id) === String(selectedCategoryId)
-  );
+  const visibleCats = (categories || []).filter((c) => Number(c.active) !== 0);
+  const visibleLinks = (links || []).filter((l) => Number(l.active) !== 0);
 
-  const visible = (links || [])
-    .filter((l) => Number(l.active) !== 0)
-    .filter((l) => {
-      if (selectedCategoryId === 'all') return true;
-      if (String(l.category_id) === String(selectedCategoryId)) return true;
-      if (selectedCatObj && (l.category || '').toLowerCase() === selectedCatObj.name.toLowerCase()) {
-        return true;
-      }
-      return false;
-    });
-
-  if (visible.length === 0) {
-    container.innerHTML = `<div class="empty-state">No links in this category yet.</div>`;
+  if (visibleLinks.length === 0) {
+    container.innerHTML = `<div class="empty-state">No links available yet.</div>`;
     return;
   }
 
-  container.innerHTML = visible
-    .map((link) => {
-      const iconSvg = ICONS[link.icon] || ICONS['arrow-up-right'];
-      const hasImage = Boolean((link.image_url || '').trim());
+  // If a specific filter category pill is selected, show links for that category
+  if (selectedCategoryId !== 'all') {
+    const selectedCatObj = visibleCats.find((c) => String(c.id) === String(selectedCategoryId));
+    const filtered = visibleLinks.filter(
+      (l) =>
+        String(l.category_id) === String(selectedCategoryId) ||
+        (selectedCatObj && (l.category || '').toLowerCase() === selectedCatObj.name.toLowerCase())
+    );
 
-      const mediaHtml = hasImage
-        ? `<div class="link-thumb-box"><img src="${escapeHtml(
-            link.image_url
-          )}" alt="${escapeHtml(link.title)}" class="link-thumb-img" loading="lazy" /></div>`
-        : `<div class="link-icon-box" aria-hidden="true">${iconSvg}</div>`;
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="empty-state">No links in this category yet.</div>`;
+      return;
+    }
 
-      const badgeHtml = link.badge
-        ? `<span class="link-badge">${escapeHtml(link.badge)}</span>`
-        : '';
-      const subtitleHtml = link.subtitle
-        ? `<p class="link-subtitle">${escapeHtml(link.subtitle)}</p>`
-        : '';
+    container.innerHTML = filtered.map(buildLinkCardHtml).join('');
+  } else {
+    // When "All" is selected:
+    // Render standard links first, and render 'section' categories with their left-aligned category heading!
+    const sectionCatIds = new Set(
+      visibleCats.filter((c) => c.display_type === 'section').map((c) => String(c.id))
+    );
 
-      return `
-        <a href="${escapeHtml(link.url)}"
-           target="_blank"
-           rel="noopener noreferrer"
-           class="link-card"
-           data-link-id="${link.id}">
-          <div class="link-card-left">
-            ${mediaHtml}
-            <div class="link-text-group">
-              <div class="link-title-line">
-                <span class="link-title">${escapeHtml(link.title)}</span>
-                ${badgeHtml}
-              </div>
-              ${subtitleHtml}
+    const standardLinks = visibleLinks.filter((l) => !sectionCatIds.has(String(l.category_id)));
+    let htmlParts = [];
+
+    if (standardLinks.length > 0) {
+      htmlParts.push(standardLinks.map(buildLinkCardHtml).join(''));
+    }
+
+    // Render each Left-Aligned Section Category with its title on the left and its links underneath
+    visibleCats
+      .filter((c) => c.display_type === 'section')
+      .forEach((secCat) => {
+        const secLinks = visibleLinks.filter(
+          (l) =>
+            String(l.category_id) === String(secCat.id) ||
+            (l.category || '').toLowerCase() === secCat.name.toLowerCase()
+        );
+        if (secLinks.length > 0) {
+          htmlParts.push(`
+            <div class="category-section-group">
+              <h2 class="category-section-heading">${escapeHtml(secCat.name)}</h2>
+              ${secLinks.map(buildLinkCardHtml).join('')}
             </div>
-          </div>
-          <div class="link-card-right" aria-hidden="true">
-            ${ICONS['arrow-up-right']}
-          </div>
-        </a>
-      `;
-    })
-    .join('');
+          `);
+        }
+      });
 
+    container.innerHTML =
+      htmlParts.length > 0
+        ? htmlParts.join('')
+        : `<div class="empty-state">No links available yet.</div>`;
+  }
+
+  // Attach click tracking
   container.querySelectorAll('.link-card').forEach((card) => {
     card.addEventListener('click', () => {
       const id = Number(card.getAttribute('data-link-id'));
@@ -336,7 +493,6 @@ function renderPublicLinks(categories, links) {
   });
 }
 
-// Redirect #admin or keyboard shortcut to the dedicated /admin.html Visual Studio page
 function checkAdminRedirect() {
   if (window.location.hash === '#admin' || window.location.hash === '#login') {
     window.location.href = '/admin.html';

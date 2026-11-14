@@ -88,13 +88,16 @@
       <!-- Navigation Pills -->
       <div class="studio-nav-tabs">
         <button type="button" class="studio-nav-tab active" data-pane="builder">
-          1. Categories &amp; Links Builder
+          1. Categories &amp; Links
+        </button>
+        <button type="button" class="studio-nav-tab" data-pane="carousel">
+          2. Featured Carousel
         </button>
         <button type="button" class="studio-nav-tab" data-pane="profile">
-          2. Profile &amp; TikTok Avatar
+          3. Profile, Logo &amp; Blurred BG
         </button>
         <button type="button" class="studio-nav-tab" data-pane="security">
-          3. Security
+          4. Security
         </button>
       </div>
 
@@ -104,10 +107,10 @@
         <div class="studio-card">
           <div class="studio-card-header">
             <div>
-              <span class="modal-eyebrow">STEP 1 &bull; CATEGORIES BAR</span>
-              <h2 class="studio-card-title">Categories &amp; Action Pills</h2>
+              <span class="modal-eyebrow">STEP 1 &bull; CATEGORIES &amp; SECTION HEADINGS</span>
+              <h2 class="studio-card-title">Categories Bar &amp; Left-Aligned Headings</h2>
               <p class="studio-card-subtitle">
-                Create standard categories (to group links) or <strong>Clickable Link Categories</strong> that always look highlighted like the active category pill and open a URL directly.
+                Choose between a <strong>Filter Tab Pill</strong>, a <strong>Left-Aligned Section Title</strong> (displayed above its links on the left), or a <strong>Clickable Active Pill</strong> (opens a URL directly).
               </p>
             </div>
             <button type="button" class="btn-primary btn-sm" id="add-category-btn">+ New Category</button>
@@ -124,12 +127,13 @@
             <div class="form-grid-2">
               <div class="form-group">
                 <label for="cat-name">Category Title *</label>
-                <input type="text" id="cat-name" placeholder="e.g. Hardware, Desk Setup, Shop ↗" required />
+                <input type="text" id="cat-name" placeholder="e.g. Hardware, My Gear, Shop ↗" required />
               </div>
               <div class="form-group">
-                <label for="cat-type">Category Behavior</label>
+                <label for="cat-type">Category Style &amp; Behavior</label>
                 <select id="cat-type">
-                  <option value="filter">Standard Category (Holds Links Inside)</option>
+                  <option value="filter">Filter Tab Pill (Top Segmented Bar)</option>
+                  <option value="section">Left-Aligned Section Title (Header Above Links)</option>
                   <option value="link">Clickable Active Pill (Opens Direct URL)</option>
                 </select>
               </div>
@@ -248,33 +252,103 @@
         </div>
       </div>
 
-      <!-- PANE 2: PROFILE & AVATAR UPLOAD / TIKTOK AUTO-SYNC -->
+      <!-- PANE 2: FEATURED CAROUSEL (Between Bio and Categories) -->
+      <div id="pane-carousel" class="studio-pane hidden">
+        <div class="studio-card">
+          <div class="studio-card-header">
+            <div>
+              <span class="modal-eyebrow">BETWEEN BIO &amp; CATEGORIES</span>
+              <h2 class="studio-card-title">Featured Spotlight Carousel</h2>
+              <p class="studio-card-subtitle">
+                Add horizontal cards displayed right below your bio: <strong>photo on the left, title &amp; description on the right</strong>, and clicking opens your target URL.
+              </p>
+            </div>
+            <button type="button" class="btn-primary btn-sm" id="add-slide-btn">+ Add Carousel Slide</button>
+          </div>
+
+          <!-- Carousel Slide Editor Form -->
+          <form id="carousel-form" class="editor-card hidden">
+            <div class="editor-card-header">
+              <h4 id="carousel-form-title">New Carousel Slide</h4>
+              <button type="button" class="btn-ghost-sm" id="cancel-slide-btn">Cancel</button>
+            </div>
+            <input type="hidden" id="slide-id" value="" />
+
+            <div class="upload-row">
+              <div class="upload-preview-box" id="slide-img-preview-box">
+                <img id="slide-img-preview" src="" alt="Slide Preview" class="upload-preview-img hidden" />
+                <span id="slide-img-placeholder" class="upload-placeholder-text">No Photo</span>
+              </div>
+              <div class="upload-controls">
+                <label class="upload-label-title">Left-Side Slide Photo *</label>
+                <p class="upload-help">Displayed on the left side of the carousel card.</p>
+                <div class="upload-btn-group">
+                  <label class="btn-ghost-sm upload-file-btn">
+                    <input type="file" id="slide-image-file" accept="image/*" class="hidden" />
+                    <span>Upload Photo...</span>
+                  </label>
+                  <button type="button" class="btn-ghost-sm hidden" id="clear-slide-img-btn">Remove</button>
+                </div>
+                <input type="text" id="slide-image-url" class="upload-url-input" placeholder="Or paste image URL..." />
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="slide-title">Title (Right Side) *</label>
+                <input type="text" id="slide-title" placeholder="e.g. Latest Desk Tour Video" required />
+              </div>
+              <div class="form-group">
+                <label for="slide-url">Target Link (URL) *</label>
+                <input type="url" id="slide-url" placeholder="https://..." required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="slide-desc">Description (Right Side)</label>
+              <textarea id="slide-desc" rows="2" placeholder="Watch the full breakdown and parts list..."></textarea>
+            </div>
+
+            <div class="form-row-between">
+              <label class="checkbox-label">
+                <input type="checkbox" id="slide-active" checked />
+                <span>Visible in carousel</span>
+              </label>
+              <button type="submit" class="btn-primary btn-sm">Save Slide</button>
+            </div>
+          </form>
+
+          <div id="studio-carousel-list" class="admin-links-list"></div>
+        </div>
+      </div>
+
+      <!-- PANE 3: PROFILE, COLOR LOGO & BLURRED BACKGROUND -->
       <div id="pane-profile" class="studio-pane hidden">
         <div class="studio-card">
           <div class="studio-card-header">
             <div>
-              <span class="modal-eyebrow">BRAND IDENTITY</span>
-              <h2 class="studio-card-title">Profile &amp; Avatar</h2>
+              <span class="modal-eyebrow">BRAND IDENTITY &amp; ATMOSPHERE</span>
+              <h2 class="studio-card-title">Profile, Logo &amp; Blurred Background</h2>
               <p class="studio-card-subtitle">
-                Upload a custom profile photo, or automatically pull your current profile picture from TikTok.
+                Customize your avatar (clicking it opens your TikTok), toggle original colors vs. black-and-white, format multi-line bio, and upload a blurred background image.
               </p>
             </div>
           </div>
 
           <form id="profile-form" class="apple-form">
-            <!-- Profile Avatar Uploader + TikTok Auto-Fetch -->
+            <!-- Profile Avatar Uploader + TikTok Auto-Fetch + Color Toggle -->
             <div class="upload-row">
               <div class="upload-preview-box upload-preview-avatar">
                 <img id="prof-avatar-preview" src="" alt="Avatar Preview" class="upload-preview-img hidden" />
                 <span id="prof-avatar-placeholder" class="upload-placeholder-text">VT</span>
               </div>
               <div class="upload-controls">
-                <label class="upload-label-title">Profile Picture</label>
-                <p class="upload-help">Upload an image from disk or click "Fetch from TikTok" to pull your avatar automatically.</p>
+                <label class="upload-label-title">Profile Logo / Avatar (Clicking Opens Your TikTok)</label>
+                <p class="upload-help">Upload a photo or pull your current TikTok avatar automatically.</p>
                 <div class="upload-btn-group">
                   <label class="btn-primary btn-sm upload-file-btn">
                     <input type="file" id="prof-avatar-file" accept="image/*" class="hidden" />
-                    <span>Upload Photo...</span>
+                    <span>Upload Logo...</span>
                   </label>
                   <button type="button" class="btn-ghost-sm" id="fetch-tiktok-avatar-btn">
                     Auto-Fetch from TikTok
@@ -284,6 +358,36 @@
                   </button>
                 </div>
                 <input type="text" id="edit-avatar" class="upload-url-input" placeholder="Avatar image URL or uploaded data..." />
+                <label class="checkbox-label" style="margin-top: 6px;">
+                  <input type="checkbox" id="edit-avatar-color" checked />
+                  <span>Keep original logo colors (uncheck for black &amp; white grayscale filter)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Blurred Background Image Uploader -->
+            <div class="upload-row">
+              <div class="upload-preview-box">
+                <img id="bg-img-preview" src="" alt="Background Preview" class="upload-preview-img hidden" />
+                <span id="bg-img-placeholder" class="upload-placeholder-text">No BG</span>
+              </div>
+              <div class="upload-controls">
+                <label class="upload-label-title">Blurred Page Background Image (Optional)</label>
+                <p class="upload-help">Creates an Apple-style frosted glass blurred wallpaper behind your page.</p>
+                <div class="upload-btn-group">
+                  <label class="btn-ghost-sm upload-file-btn">
+                    <input type="file" id="bg-image-file" accept="image/*" class="hidden" />
+                    <span>Upload Background Image...</span>
+                  </label>
+                  <button type="button" class="btn-ghost-sm" id="clear-bg-img-btn">
+                    Remove Background
+                  </button>
+                </div>
+                <input type="text" id="edit-bg-image" class="upload-url-input" placeholder="Background image URL or uploaded data..." />
+                <div class="blur-slider-row">
+                  <label for="edit-bg-blur">Blur Intensity: <span id="bg-blur-val">28</span>px</label>
+                  <input type="range" id="edit-bg-blur" min="4" max="64" step="2" value="28" />
+                </div>
               </div>
             </div>
 
@@ -299,13 +403,13 @@
             </div>
 
             <div class="form-group">
-              <label for="edit-bio">Short Bio (English)</label>
-              <textarea id="edit-bio" rows="2" placeholder="Next-gen consumer tech, desk architecture & software workflows."></textarea>
+              <label for="edit-bio">Multi-Line Bio (Line breaks are preserved on the page)</label>
+              <textarea id="edit-bio" rows="4" placeholder="Line 1: Tech reviews & minimal setups&#10;Line 2: Desk architecture&#10;Line 3: Collabs below"></textarea>
             </div>
 
             <div class="form-grid-2">
               <div class="form-group">
-                <label for="edit-tiktok">TikTok Profile URL</label>
+                <label for="edit-tiktok">TikTok Profile URL (Also opened when clicking logo)</label>
                 <input type="url" id="edit-tiktok" placeholder="https://www.tiktok.com/@vayztech" />
               </div>
               <div class="form-group">
@@ -327,7 +431,7 @@
         </div>
       </div>
 
-      <!-- PANE 3: SECURITY -->
+      <!-- PANE 4: SECURITY -->
       <div id="pane-security" class="studio-pane hidden">
         <div class="studio-card">
           <div class="studio-card-header">

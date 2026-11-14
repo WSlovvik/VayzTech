@@ -7,21 +7,26 @@ const DEFAULT_FALLBACK_STATE = {
   profile: {
     title: 'VayzTech',
     handle: '@vayztech',
-    bio: 'Next-gen consumer tech, desk architecture & software workflows. Featured on TikTok.',
+    bio: 'Next-gen consumer tech, desk architecture & software workflows.\nFeatured on TikTok.',
     avatar_url: '',
+    avatar_color: 1,
+    bg_image_url: '',
+    bg_blur: 28,
     tiktok_url: 'https://www.tiktok.com/@vayztech',
     email: 'hello@vayztech.com',
     theme_default: 'light',
   },
+  carousel: [],
   categories: [
-    { id: 1, name: 'Hardware', slug: 'hardware', url: '', sort_order: 1, active: 1 },
-    { id: 2, name: 'Software', slug: 'software', url: '', sort_order: 2, active: 1 },
-    { id: 3, name: 'Wallpapers', slug: 'wallpapers', url: '', sort_order: 3, active: 1 },
+    { id: 1, name: 'Hardware', slug: 'hardware', url: '', display_type: 'filter', sort_order: 1, active: 1 },
+    { id: 2, name: 'Software', slug: 'software', url: '', display_type: 'filter', sort_order: 2, active: 1 },
+    { id: 3, name: 'Wallpapers', slug: 'wallpapers', url: '', display_type: 'section', sort_order: 3, active: 1 },
     {
       id: 4,
       name: 'TikTok Feed ↗',
       slug: 'tiktok-feed',
       url: 'https://www.tiktok.com/@vayztech',
+      display_type: 'link',
       sort_order: 4,
       active: 1,
     },
@@ -134,26 +139,30 @@ function getInitials(title) {
   return clean.slice(0, 2).toUpperCase();
 }
 
-// Client-side Image Compressor (resizes uploaded photos to crisp 256x256 WebP/JPEG data URI for Cloudflare D1)
-function compressImageFile(file, maxSize = 256, quality = 0.84) {
+// Client-side Image Compressor
+function compressImageFile(file, maxSize = 256, quality = 0.84, square = true) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        // Square center-crop for clean Apple-like thumbnails & avatars
-        const minSide = Math.min(width, height);
-        const sx = (width - minSide) / 2;
-        const sy = (height - minSide) / 2;
-
-        canvas.width = maxSize;
-        canvas.height = maxSize;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, maxSize, maxSize);
+
+        if (square) {
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          canvas.width = maxSize;
+          canvas.height = maxSize;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, maxSize, maxSize);
+        } else {
+          // Maintain aspect ratio for blurred background images
+          const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
 
         const dataUrl = canvas.toDataURL('image/webp', quality);
         resolve(dataUrl);
@@ -171,6 +180,7 @@ function saveLocalFallback() {
     'vayz_local_state',
     JSON.stringify({
       profile: studioState.profile,
+      carousel: studioState.carousel,
       categories: studioState.categories,
       links: studioState.links,
     })
@@ -190,6 +200,7 @@ async function fetchStudioData() {
         isAdmin: Boolean(data.isAdmin),
         adminUser: data.adminUser || 'admin',
         profile: data.profile || DEFAULT_FALLBACK_STATE.profile,
+        carousel: Array.isArray(data.carousel) ? data.carousel : [],
         categories: Array.isArray(data.categories) ? data.categories : [],
         links: Array.isArray(data.links) ? data.links : [],
       };
@@ -232,12 +243,13 @@ function renderStudio() {
 
   renderCategoriesBuilder();
   renderLinksBuilder();
+  renderCarouselBuilder();
   populateProfileForm();
   renderLivePreview();
 }
 
 // ============================================================================
-// Step 1: Categories Builder
+// Step 1: Categories & Left-Aligned Headings Builder
 // ============================================================================
 function renderCategoriesBuilder() {
   const listEl = document.getElementById('studio-categories-list');
@@ -252,16 +264,23 @@ function renderCategoriesBuilder() {
   const catChips = cats
     .map((cat, idx) => {
       const isSelected = String(selectedCatId) === String(cat.id) ? 'active' : '';
-      const isLinkCat = Boolean((cat.url || '').trim());
+      const dtype = cat.display_type || ((cat.url || '').trim() ? 'link' : 'filter');
       const count = (studioState.links || []).filter(
         (l) => String(l.category_id) === String(cat.id)
       ).length;
 
+      let typeBadge = `${count} links • Filter Pill`;
+      if (dtype === 'section') {
+        typeBadge = `${count} links • Left Title Heading`;
+      } else if (dtype === 'link') {
+        typeBadge = 'Direct Link Pill ↗';
+      }
+
       return `
-        <div class="cat-chip ${isSelected} ${isLinkCat ? 'is-link-cat' : ''}" data-select-cat="${cat.id}">
+        <div class="cat-chip ${isSelected}" data-select-cat="${cat.id}">
           <div class="cat-chip-main">
             <span class="cat-chip-name">${escapeHtml(cat.name)}</span>
-            <span class="cat-chip-meta">${isLinkCat ? 'Direct Link Pill ↗' : `${count} links`}</span>
+            <span class="cat-chip-meta">${typeBadge}</span>
           </div>
           <div class="cat-chip-actions">
             <button type="button" class="chip-act-btn" data-cat-act="left" data-idx="${idx}" title="Move left">&larr;</button>
@@ -276,19 +295,17 @@ function renderCategoriesBuilder() {
 
   listEl.innerHTML = allChip + catChips;
 
-  // Clicking a category selects it to filter/add links inside it
   listEl.querySelectorAll('[data-select-cat]').forEach((chip) => {
     chip.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
       selectedCatId = chip.getAttribute('data-select-cat') || 'all';
-      previewCatId = selectedCatId;
+      previewCatId = 'all';
       renderCategoriesBuilder();
       renderLinksBuilder();
       renderLivePreview();
     });
   });
 
-  // Category actions (edit, delete, move)
   listEl.querySelectorAll('button[data-cat-act]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -302,12 +319,17 @@ function renderCategoriesBuilder() {
     });
   });
 
-  // Also refresh category dropdown inside link editor
+  // Populate category select inside link form
   const selectEl = document.getElementById('link-category-select');
-  const filterCats = cats.filter((c) => !(c.url || '').trim());
-  const availableCats = filterCats.length > 0 ? filterCats : cats;
+  const linkHosterCats = cats.filter((c) => c.display_type !== 'link');
+  const availableCats = linkHosterCats.length > 0 ? linkHosterCats : cats;
   selectEl.innerHTML = availableCats
-    .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
+    .map(
+      (c) =>
+        `<option value="${c.id}">${escapeHtml(c.name)} (${
+          c.display_type === 'section' ? 'Left Heading' : 'Filter Pill'
+        })</option>`
+    )
     .join('');
 }
 
@@ -335,10 +357,10 @@ function openCategoryEditor(catId = null) {
   titleEl.textContent = 'Edit Category';
   document.getElementById('cat-id').value = cat.id;
   document.getElementById('cat-name').value = cat.name || '';
-  const isLink = Boolean((cat.url || '').trim());
-  typeSelect.value = isLink ? 'link' : 'filter';
+  const dtype = cat.display_type || ((cat.url || '').trim() ? 'link' : 'filter');
+  typeSelect.value = dtype;
   document.getElementById('cat-url').value = cat.url || '';
-  urlGroup.classList.toggle('hidden', !isLink);
+  urlGroup.classList.toggle('hidden', dtype !== 'link');
   document.getElementById('cat-active').checked = Number(cat.active) !== 0;
 }
 
@@ -389,7 +411,7 @@ async function handleMoveCategory(idx, delta) {
 }
 
 // ============================================================================
-// Step 2: Links Inside Selected Category Builder
+// Step 2: Links Builder
 // ============================================================================
 function renderLinksBuilder() {
   const heading = document.getElementById('active-cat-heading');
@@ -558,13 +580,169 @@ async function handleMoveLink(idx, delta) {
 }
 
 // ============================================================================
-// Profile & TikTok Auto-Avatar
+// Step 3: Featured Carousel Builder (Between Bio & Categories)
 // ============================================================================
-function updateProfileAvatarPreview(src, title) {
+function renderCarouselBuilder() {
+  const listEl = document.getElementById('studio-carousel-list');
+  const slides = studioState.carousel || [];
+
+  if (slides.length === 0) {
+    listEl.innerHTML = `<div class="empty-state">No carousel slides yet. Click "+ Add Carousel Slide" to highlight featured content between your bio and categories.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = slides
+    .map((s, idx) => {
+      const hasThumb = Boolean((s.image_url || '').trim());
+      const thumbHtml = hasThumb
+        ? `<img src="${escapeHtml(s.image_url)}" alt="" class="admin-row-thumb" />`
+        : `<div class="admin-row-icon">${ICONS['arrow-up-right']}</div>`;
+
+      return `
+        <div class="admin-link-row ${Number(s.active) === 0 ? 'is-inactive' : ''}">
+          <div class="admin-link-left">
+            ${thumbHtml}
+            <div class="admin-link-info">
+              <div class="admin-link-title">
+                <span>${escapeHtml(s.title)}</span>
+              </div>
+              <div class="admin-link-meta">
+                ${escapeHtml(s.description || 'No description')} &bull; ${escapeHtml(s.url)}
+              </div>
+            </div>
+          </div>
+          <div class="admin-link-actions">
+            <button type="button" class="btn-ghost-sm" data-slide-act="up" data-idx="${idx}">&uarr;</button>
+            <button type="button" class="btn-ghost-sm" data-slide-act="down" data-idx="${idx}">&darr;</button>
+            <button type="button" class="btn-ghost-sm" data-slide-act="edit" data-id="${s.id}">Edit</button>
+            <button type="button" class="btn-ghost-sm" data-slide-act="delete" data-id="${s.id}">Delete</button>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+
+  listEl.querySelectorAll('button[data-slide-act]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const act = btn.getAttribute('data-slide-act');
+      const id = Number(btn.getAttribute('data-id'));
+      const idx = Number(btn.getAttribute('data-idx'));
+      if (act === 'edit') openSlideEditor(id);
+      if (act === 'delete') handleDeleteSlide(id);
+      if (act === 'up') handleMoveSlide(idx, -1);
+      if (act === 'down') handleMoveSlide(idx, 1);
+    });
+  });
+}
+
+function updateSlidePreview(src) {
+  const img = document.getElementById('slide-img-preview');
+  const placeholder = document.getElementById('slide-img-placeholder');
+  const clearBtn = document.getElementById('clear-slide-img-btn');
+  if (src) {
+    img.src = src;
+    img.classList.remove('hidden');
+    placeholder.classList.add('hidden');
+    clearBtn.classList.remove('hidden');
+  } else {
+    img.src = '';
+    img.classList.add('hidden');
+    placeholder.classList.remove('hidden');
+    clearBtn.classList.add('hidden');
+  }
+}
+
+function openSlideEditor(slideId = null) {
+  const form = document.getElementById('carousel-form');
+  const titleEl = document.getElementById('carousel-form-title');
+  form.classList.remove('hidden');
+
+  if (!slideId) {
+    titleEl.textContent = 'New Carousel Slide';
+    document.getElementById('slide-id').value = '';
+    document.getElementById('slide-title').value = '';
+    document.getElementById('slide-desc').value = '';
+    document.getElementById('slide-url').value = '';
+    document.getElementById('slide-image-url').value = '';
+    updateSlidePreview('');
+    document.getElementById('slide-active').checked = true;
+    return;
+  }
+
+  const s = (studioState.carousel || []).find((item) => Number(item.id) === Number(slideId));
+  if (!s) return;
+
+  titleEl.textContent = 'Edit Carousel Slide';
+  document.getElementById('slide-id').value = s.id;
+  document.getElementById('slide-title').value = s.title || '';
+  document.getElementById('slide-desc').value = s.description || '';
+  document.getElementById('slide-url').value = s.url || '';
+  document.getElementById('slide-image-url').value = s.image_url || '';
+  updateSlidePreview(s.image_url || '');
+  document.getElementById('slide-active').checked = Number(s.active) !== 0;
+}
+
+async function handleDeleteSlide(id) {
+  if (studioState.dbConnected) {
+    const res = await fetch(`/api/carousel?id=${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    const data = await res.json();
+    if (data.ok) studioState.carousel = data.carousel;
+  } else {
+    studioState.carousel = (studioState.carousel || []).filter((s) => Number(s.id) !== Number(id));
+    saveLocalFallback();
+  }
+  renderStudio();
+  showToast('Carousel slide deleted');
+}
+
+async function handleMoveSlide(idx, delta) {
+  const target = idx + delta;
+  if (target < 0 || target >= studioState.carousel.length) return;
+  const copy = [...studioState.carousel];
+  const [moved] = copy.splice(idx, 1);
+  copy.splice(target, 0, moved);
+  studioState.carousel = copy;
+
+  if (studioState.dbConnected) {
+    const res = await fetch('/api/carousel', {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ order: copy.map((s) => ({ id: s.id })) }),
+    });
+    const data = await res.json();
+    if (data.ok) studioState.carousel = data.carousel;
+  } else {
+    saveLocalFallback();
+  }
+  renderStudio();
+}
+
+// ============================================================================
+// Step 4: Profile, Color Logo & Blurred Background
+// ============================================================================
+function updateProfileAvatarPreview(src, title, isColor = true) {
   const img = document.getElementById('prof-avatar-preview');
   const placeholder = document.getElementById('prof-avatar-placeholder');
   placeholder.textContent = getInitials(title);
+  img.classList.toggle('is-grayscale', !isColor);
 
+  if (src) {
+    img.src = src;
+    img.classList.remove('hidden');
+    placeholder.classList.add('hidden');
+  } else {
+    img.src = '';
+    img.classList.add('hidden');
+    placeholder.classList.remove('hidden');
+  }
+}
+
+function updateBgImagePreview(src) {
+  const img = document.getElementById('bg-img-preview');
+  const placeholder = document.getElementById('bg-img-placeholder');
   if (src) {
     img.src = src;
     img.classList.remove('hidden');
@@ -584,10 +762,17 @@ function populateProfileForm() {
   document.getElementById('edit-tiktok').value = p.tiktok_url || '';
   document.getElementById('edit-email').value = p.email || '';
   document.getElementById('edit-avatar').value = p.avatar_url || '';
+  const isColor = Number(p.avatar_color ?? 1) !== 0;
+  document.getElementById('edit-avatar-color').checked = isColor;
+  document.getElementById('edit-bg-image').value = p.bg_image_url || '';
+  const blurVal = Number(p.bg_blur ?? 28);
+  document.getElementById('edit-bg-blur').value = blurVal;
+  document.getElementById('bg-blur-val').textContent = blurVal;
   document.getElementById('edit-theme').value = p.theme_default || 'light';
   document.getElementById('sec-username').value = studioState.adminUser || 'admin';
 
-  updateProfileAvatarPreview(p.avatar_url || '', p.title);
+  updateProfileAvatarPreview(p.avatar_url || '', p.title, isColor);
+  updateBgImagePreview(p.bg_image_url || '');
 }
 
 // ============================================================================
@@ -597,92 +782,166 @@ function renderLivePreview() {
   const root = document.getElementById('live-preview-root');
   if (!root) return;
 
-  const { profile, categories, links } = studioState;
+  const { profile, carousel, categories, links } = studioState;
   const visibleCats = (categories || []).filter((c) => Number(c.active) !== 0);
+  const visibleSlides = (carousel || []).filter((s) => Number(s.active) !== 0);
+  const visibleLinks = (links || []).filter((l) => Number(l.active) !== 0);
+
+  const isColor = Number(profile.avatar_color ?? 1) !== 0;
+  const tiktokHref = profile.tiktok_url || 'https://www.tiktok.com/@vayztech';
 
   const avatarHtml = profile.avatar_url
-    ? `<img src="${escapeHtml(profile.avatar_url)}" class="avatar-img" alt="" />`
+    ? `<img src="${escapeHtml(profile.avatar_url)}" class="avatar-img ${
+        isColor ? '' : 'is-grayscale'
+      }" alt="" />`
     : `<div class="avatar-fallback"><span>${escapeHtml(getInitials(profile.title))}</span></div>`;
 
+  // Blurred Background inside device screen
+  const hasBg = Boolean((profile.bg_image_url || '').trim());
+  const blurPx = Number(profile.bg_blur ?? 28);
+  const bgLayerHtml = hasBg
+    ? `<div style="position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;">
+         <div style="position:absolute;inset:-24px;background-image:url('${escapeHtml(
+           profile.bg_image_url
+         )}');background-size:cover;background-position:center;filter:blur(${blurPx}px);opacity:0.42;"></div>
+       </div>`
+    : '';
+
+  // Carousel HTML
+  const carouselHtml =
+    visibleSlides.length > 0
+      ? `<div class="carousel-section" style="margin-bottom:18px;">
+           <div class="carousel-viewport">
+             <div class="carousel-track">
+               ${visibleSlides
+                 .map(
+                   (s) => `
+                 <a href="${escapeHtml(s.url)}" target="_blank" class="carousel-slide-card" style="padding:12px;gap:12px;">
+                   <div class="carousel-slide-media" style="width:68px;height:68px;">
+                     ${
+                       s.image_url
+                         ? `<img src="${escapeHtml(s.image_url)}" class="carousel-slide-img" alt="" />`
+                         : ICONS['arrow-up-right']
+                     }
+                   </div>
+                   <div class="carousel-slide-content">
+                     <h4 class="carousel-slide-title" style="font-size:14px;">${escapeHtml(s.title)}</h4>
+                     ${
+                       s.description
+                         ? `<p class="carousel-slide-desc" style="font-size:12px;">${escapeHtml(
+                             s.description
+                           )}</p>`
+                         : ''
+                     }
+                   </div>
+                 </a>
+               `
+                 )
+                 .join('')}
+             </div>
+           </div>
+         </div>`
+      : '';
+
+  // Filter & Link Category Pills
+  const barCats = visibleCats.filter((c) => c.display_type !== 'section');
   const catPillsHtml =
-    `<button type="button" class="segment-btn ${
-      previewCatId === 'all' ? 'active' : ''
-    }" data-prev-cat="all">All</button>` +
+    barCats.length > 0
+      ? `<div class="category-filter-wrap" style="margin-bottom:14px;">
+           <div class="category-segmented">
+             <button type="button" class="segment-btn ${
+               previewCatId === 'all' ? 'active' : ''
+             }" data-prev-cat="all">All</button>
+             ${barCats
+               .map((c) => {
+                 if (c.display_type === 'link' || (c.url || '').trim()) {
+                   return `<a href="${escapeHtml(
+                     c.url
+                   )}" target="_blank" class="segment-btn active segment-link-pill">${escapeHtml(
+                     c.name
+                   )}</a>`;
+                 }
+                 const activeClass = String(previewCatId) === String(c.id) ? 'active' : '';
+                 return `<button type="button" class="segment-btn ${activeClass}" data-prev-cat="${
+                   c.id
+                 }">${escapeHtml(c.name)}</button>`;
+               })
+               .join('')}
+           </div>
+         </div>`
+      : '';
+
+  const renderCard = (link) => {
+    const hasImage = Boolean((link.image_url || '').trim());
+    const mediaHtml = hasImage
+      ? `<div class="link-thumb-box"><img src="${escapeHtml(
+          link.image_url
+        )}" alt="" class="link-thumb-img" /></div>`
+      : `<div class="link-icon-box">${ICONS[link.icon] || ICONS['arrow-up-right']}</div>`;
+
+    return `
+      <a href="${escapeHtml(link.url)}" target="_blank" class="link-card">
+        <div class="link-card-left">
+          ${mediaHtml}
+          <div class="link-text-group">
+            <div class="link-title-line">
+              <span class="link-title">${escapeHtml(link.title)}</span>
+              ${link.badge ? `<span class="link-badge">${escapeHtml(link.badge)}</span>` : ''}
+            </div>
+            ${link.subtitle ? `<p class="link-subtitle">${escapeHtml(link.subtitle)}</p>` : ''}
+          </div>
+        </div>
+        <div class="link-card-right">${ICONS['arrow-up-right']}</div>
+      </a>
+    `;
+  };
+
+  let linksContentHtml = '';
+  if (previewCatId !== 'all') {
+    const filtered = visibleLinks.filter((l) => String(l.category_id) === String(previewCatId));
+    linksContentHtml =
+      filtered.length > 0
+        ? filtered.map(renderCard).join('')
+        : `<div class="empty-state">No links in this category.</div>`;
+  } else {
+    const sectionCatIds = new Set(
+      visibleCats.filter((c) => c.display_type === 'section').map((c) => String(c.id))
+    );
+    const standardLinks = visibleLinks.filter((l) => !sectionCatIds.has(String(l.category_id)));
+    const parts = [];
+    if (standardLinks.length > 0) {
+      parts.push(standardLinks.map(renderCard).join(''));
+    }
     visibleCats
-      .map((c) => {
-        if ((c.url || '').trim()) {
-          return `<a href="${escapeHtml(
-            c.url
-          )}" target="_blank" class="segment-btn active segment-link-pill">${escapeHtml(
-            c.name
-          )}</a>`;
+      .filter((c) => c.display_type === 'section')
+      .forEach((sec) => {
+        const secLinks = visibleLinks.filter((l) => String(l.category_id) === String(sec.id));
+        if (secLinks.length > 0) {
+          parts.push(`
+            <div class="category-section-group">
+              <h2 class="category-section-heading">${escapeHtml(sec.name)}</h2>
+              ${secLinks.map(renderCard).join('')}
+            </div>
+          `);
         }
-        const activeClass = String(previewCatId) === String(c.id) ? 'active' : '';
-        return `<button type="button" class="segment-btn ${activeClass}" data-prev-cat="${
-          c.id
-        }">${escapeHtml(c.name)}</button>`;
-      })
-      .join('');
-
-  const visibleLinks = (links || [])
-    .filter((l) => Number(l.active) !== 0)
-    .filter((l) => {
-      if (previewCatId === 'all') return true;
-      return String(l.category_id) === String(previewCatId);
-    });
-
-  const linksHtml =
-    visibleLinks.length === 0
-      ? `<div class="empty-state">No links in this category.</div>`
-      : visibleLinks
-          .map((link) => {
-            const hasImage = Boolean((link.image_url || '').trim());
-            const mediaHtml = hasImage
-              ? `<div class="link-thumb-box"><img src="${escapeHtml(
-                  link.image_url
-                )}" alt="" class="link-thumb-img" /></div>`
-              : `<div class="link-icon-box">${ICONS[link.icon] || ICONS['arrow-up-right']}</div>`;
-
-            return `
-              <a href="${escapeHtml(link.url)}" target="_blank" class="link-card">
-                <div class="link-card-left">
-                  ${mediaHtml}
-                  <div class="link-text-group">
-                    <div class="link-title-line">
-                      <span class="link-title">${escapeHtml(link.title)}</span>
-                      ${
-                        link.badge
-                          ? `<span class="link-badge">${escapeHtml(link.badge)}</span>`
-                          : ''
-                      }
-                    </div>
-                    ${
-                      link.subtitle
-                        ? `<p class="link-subtitle">${escapeHtml(link.subtitle)}</p>`
-                        : ''
-                    }
-                  </div>
-                </div>
-                <div class="link-card-right">${ICONS['arrow-up-right']}</div>
-              </a>
-            `;
-          })
-          .join('');
+      });
+    linksContentHtml = parts.join('') || `<div class="empty-state">No links yet.</div>`;
+  }
 
   root.innerHTML = `
-    <div class="preview-inner">
-      <div class="profile-header">
-        <div class="avatar-wrapper">${avatarHtml}</div>
+    ${bgLayerHtml}
+    <div class="preview-inner" style="position:relative;z-index:2;">
+      <div class="profile-header" style="margin-bottom:20px;">
+        <a href="${escapeHtml(tiktokHref)}" target="_blank" class="avatar-wrapper" title="Opens TikTok">${avatarHtml}</a>
         <div class="title-row">
           <h3 class="profile-title" style="font-size:21px;">${escapeHtml(profile.title)}</h3>
         </div>
         <p class="profile-handle">${escapeHtml(profile.handle)}</p>
         <p class="profile-bio" style="font-size:13px;margin-bottom:14px;">${escapeHtml(profile.bio)}</p>
       </div>
-      <div class="category-filter-wrap" style="margin-bottom:14px;">
-        <div class="category-segmented">${catPillsHtml}</div>
-      </div>
-      <div class="links-list">${linksHtml}</div>
+      ${carouselHtml}
+      ${catPillsHtml}
+      <div class="links-list">${linksContentHtml}</div>
     </div>
   `;
 
@@ -703,7 +962,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   fetchStudioData();
 
-  // Theme Toggle
   document.getElementById('studio-theme-toggle').addEventListener('click', () => {
     const current = document.documentElement.getAttribute('data-theme');
     const next = current === 'dark' ? 'light' : 'dark';
@@ -718,6 +976,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tab.classList.add('active');
       const pane = tab.getAttribute('data-pane');
       document.getElementById('pane-builder').classList.toggle('hidden', pane !== 'builder');
+      document.getElementById('pane-carousel').classList.toggle('hidden', pane !== 'carousel');
       document.getElementById('pane-profile').classList.toggle('hidden', pane !== 'profile');
       document.getElementById('pane-security').classList.toggle('hidden', pane !== 'security');
     });
@@ -784,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Signed out');
   });
 
-  // Category Form Toggle & Type Behavior
+  // Category Form
   document.getElementById('add-category-btn').addEventListener('click', () => openCategoryEditor(null));
   document.getElementById('cancel-category-btn').addEventListener('click', () => {
     document.getElementById('category-form').classList.add('hidden');
@@ -801,11 +1060,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('category-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('cat-id').value;
-    const isLink = document.getElementById('cat-type').value === 'link';
+    const display_type = document.getElementById('cat-type').value;
     const payload = {
       id: id ? Number(id) : undefined,
       name: document.getElementById('cat-name').value.trim(),
-      url: isLink ? document.getElementById('cat-url').value.trim() : '',
+      display_type,
+      url: display_type === 'link' ? document.getElementById('cat-url').value.trim() : '',
       active: document.getElementById('cat-active').checked ? 1 : 0,
     };
 
@@ -847,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await compressImageFile(file, 200, 0.84);
+      const dataUrl = await compressImageFile(file, 200, 0.84, true);
       document.getElementById('link-image-url').value = dataUrl;
       updateLinkThumbPreview(dataUrl);
       showToast('Thumbnail photo ready');
@@ -908,27 +1168,136 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(id ? 'Link updated' : 'Link added');
   });
 
-  // Profile Avatar Upload & TikTok Auto-Fetch
+  // Carousel Form & Slide Photo Upload
+  document.getElementById('add-slide-btn').addEventListener('click', () => openSlideEditor(null));
+  document.getElementById('cancel-slide-btn').addEventListener('click', () => {
+    document.getElementById('carousel-form').classList.add('hidden');
+  });
+
+  document.getElementById('slide-image-file').addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageFile(file, 260, 0.85, true);
+      document.getElementById('slide-image-url').value = dataUrl;
+      updateSlidePreview(dataUrl);
+      showToast('Slide photo ready');
+    } catch {
+      showToast('Could not process slide photo');
+    }
+  });
+
+  document.getElementById('slide-image-url').addEventListener('input', (e) => {
+    updateSlidePreview(e.target.value.trim());
+  });
+
+  document.getElementById('clear-slide-img-btn').addEventListener('click', () => {
+    document.getElementById('slide-image-url').value = '';
+    updateSlidePreview('');
+  });
+
+  document.getElementById('carousel-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('slide-id').value;
+    const payload = {
+      id: id ? Number(id) : undefined,
+      title: document.getElementById('slide-title').value.trim(),
+      description: document.getElementById('slide-desc').value.trim(),
+      url: document.getElementById('slide-url').value.trim(),
+      image_url: document.getElementById('slide-image-url').value.trim(),
+      active: document.getElementById('slide-active').checked ? 1 : 0,
+    };
+
+    if (studioState.dbConnected) {
+      const res = await fetch('/api/carousel', {
+        method: id ? 'PUT' : 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.ok) studioState.carousel = data.carousel;
+    } else {
+      if (!studioState.carousel) studioState.carousel = [];
+      if (id) {
+        const idx = studioState.carousel.findIndex((s) => Number(s.id) === Number(id));
+        if (idx !== -1) studioState.carousel[idx] = { ...studioState.carousel[idx], ...payload };
+      } else {
+        const nextId =
+          studioState.carousel.reduce((m, s) => Math.max(m, Number(s.id) || 0), 0) + 1;
+        studioState.carousel.push({ ...payload, id: nextId, sort_order: nextId });
+      }
+      saveLocalFallback();
+    }
+
+    document.getElementById('carousel-form').classList.add('hidden');
+    renderStudio();
+    showToast(id ? 'Slide updated' : 'Slide added to carousel');
+  });
+
+  // Profile Avatar Upload, Color Toggle & Blurred Background Upload
   document.getElementById('prof-avatar-file').addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await compressImageFile(file, 256, 0.86);
+      const dataUrl = await compressImageFile(file, 256, 0.86, true);
       document.getElementById('edit-avatar').value = dataUrl;
-      updateProfileAvatarPreview(dataUrl, document.getElementById('edit-title').value);
-      showToast('Profile photo ready — click Save Profile');
+      updateProfileAvatarPreview(
+        dataUrl,
+        document.getElementById('edit-title').value,
+        document.getElementById('edit-avatar-color').checked
+      );
+      showToast('Logo ready — click Save Profile');
     } catch {
       showToast('Failed to process image');
     }
   });
 
   document.getElementById('edit-avatar').addEventListener('input', (e) => {
-    updateProfileAvatarPreview(e.target.value.trim(), document.getElementById('edit-title').value);
+    updateProfileAvatarPreview(
+      e.target.value.trim(),
+      document.getElementById('edit-title').value,
+      document.getElementById('edit-avatar-color').checked
+    );
+  });
+
+  document.getElementById('edit-avatar-color').addEventListener('change', (e) => {
+    updateProfileAvatarPreview(
+      document.getElementById('edit-avatar').value.trim(),
+      document.getElementById('edit-title').value,
+      e.target.checked
+    );
   });
 
   document.getElementById('clear-prof-avatar-btn').addEventListener('click', () => {
     document.getElementById('edit-avatar').value = '';
-    updateProfileAvatarPreview('', document.getElementById('edit-title').value);
+    updateProfileAvatarPreview('', document.getElementById('edit-title').value, true);
+  });
+
+  // Blurred Background Upload & Blur Slider
+  document.getElementById('bg-image-file').addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageFile(file, 480, 0.78, false);
+      document.getElementById('edit-bg-image').value = dataUrl;
+      updateBgImagePreview(dataUrl);
+      showToast('Blurred background image ready — click Save Profile');
+    } catch {
+      showToast('Failed to process background image');
+    }
+  });
+
+  document.getElementById('edit-bg-image').addEventListener('input', (e) => {
+    updateBgImagePreview(e.target.value.trim());
+  });
+
+  document.getElementById('clear-bg-img-btn').addEventListener('click', () => {
+    document.getElementById('edit-bg-image').value = '';
+    updateBgImagePreview('');
+  });
+
+  document.getElementById('edit-bg-blur').addEventListener('input', (e) => {
+    document.getElementById('bg-blur-val').textContent = e.target.value;
   });
 
   document.getElementById('fetch-tiktok-avatar-btn').addEventListener('click', async () => {
@@ -952,7 +1321,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       if (data && data.ok && data.avatar_url) {
         document.getElementById('edit-avatar').value = data.avatar_url;
-        updateProfileAvatarPreview(data.avatar_url, document.getElementById('edit-title').value);
+        updateProfileAvatarPreview(
+          data.avatar_url,
+          document.getElementById('edit-title').value,
+          document.getElementById('edit-avatar-color').checked
+        );
         showToast('TikTok avatar loaded! Click Save Profile to publish.');
         return;
       }
@@ -961,7 +1334,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const fallbackUrl = `https://unavatar.io/tiktok/${encodeURIComponent(cleanHandle)}`;
     document.getElementById('edit-avatar').value = fallbackUrl;
-    updateProfileAvatarPreview(fallbackUrl, document.getElementById('edit-title').value);
+    updateProfileAvatarPreview(
+      fallbackUrl,
+      document.getElementById('edit-title').value,
+      document.getElementById('edit-avatar-color').checked
+    );
     showToast('TikTok avatar URL set! Click Save Profile.');
   });
 
@@ -971,10 +1348,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const payload = {
       title: document.getElementById('edit-title').value.trim(),
       handle: document.getElementById('edit-handle').value.trim(),
-      bio: document.getElementById('edit-bio').value.trim(),
+      bio: document.getElementById('edit-bio').value,
       tiktok_url: document.getElementById('edit-tiktok').value.trim(),
       email: document.getElementById('edit-email').value.trim(),
       avatar_url: document.getElementById('edit-avatar').value.trim(),
+      avatar_color: document.getElementById('edit-avatar-color').checked ? 1 : 0,
+      bg_image_url: document.getElementById('edit-bg-image').value.trim(),
+      bg_blur: Number(document.getElementById('edit-bg-blur').value || 28),
       theme_default: document.getElementById('edit-theme').value,
     };
 
@@ -992,7 +1372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     renderStudio();
-    showToast('Profile saved');
+    showToast('Profile & Background saved');
   });
 
   // Security Form

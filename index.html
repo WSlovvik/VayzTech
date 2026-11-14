@@ -15,6 +15,12 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
+  <!-- Optional Blurred Background Image Layer -->
+  <div id="bg-backdrop-wrap" class="bg-backdrop-wrap hidden" aria-hidden="true">
+    <div id="bg-backdrop-img" class="bg-backdrop-img"></div>
+    <div class="bg-backdrop-overlay"></div>
+  </div>
+
   <!-- Subtle Top Navigation Bar -->
   <header class="top-bar">
     <div class="top-bar-inner">
@@ -56,12 +62,13 @@
   <main class="container">
     <!-- Hero / Profile Section -->
     <section class="profile-header" aria-label="Profile">
-      <div class="avatar-wrapper" id="avatar-wrapper">
+      <!-- Clicking the logo/avatar navigates directly to TikTok -->
+      <a id="avatar-link" href="https://www.tiktok.com/@vayztech" target="_blank" rel="noopener noreferrer" class="avatar-wrapper" title="Visit TikTok Profile">
         <img id="profile-avatar" src="" alt="Profile Avatar" class="avatar-img hidden" />
         <div id="avatar-fallback" class="avatar-fallback">
           <span id="avatar-initials">VT</span>
         </div>
-      </div>
+      </a>
 
       <div class="profile-meta">
         <div class="title-row">
@@ -73,9 +80,8 @@
           </span>
         </div>
         <p id="profile-handle" class="profile-handle">@vayztech</p>
-        <p id="profile-bio" class="profile-bio">
-          Next-gen consumer tech, desk architecture &amp; software workflows. Featured on TikTok.
-        </p>
+        <!-- Bio preserves line breaks exactly as typed in the textbox -->
+        <p id="profile-bio" class="profile-bio">Next-gen consumer tech, desk architecture &amp; software workflows. Featured on TikTok.</p>
       </div>
 
       <!-- Primary Action Buttons: TikTok & Email -->
@@ -97,6 +103,20 @@
       </div>
     </section>
 
+    <!-- Featured Horizontal Carousel (Between Bio/Socials and Categories) -->
+    <section id="carousel-section" class="carousel-section hidden" aria-label="Featured Highlights">
+      <div class="carousel-viewport">
+        <div id="carousel-track" class="carousel-track">
+          <!-- Populated dynamically by app.js -->
+        </div>
+      </div>
+      <div id="carousel-controls" class="carousel-controls hidden">
+        <button type="button" class="carousel-nav-btn" id="carousel-prev" aria-label="Previous slide">&larr;</button>
+        <div id="carousel-dots" class="carousel-dots"></div>
+        <button type="button" class="carousel-nav-btn" id="carousel-next" aria-label="Next slide">&rarr;</button>
+      </div>
+    </section>
+
     <!-- Category Bar (Supports Filter Categories & Highlighted Clickable Link Categories) -->
     <nav class="category-filter-wrap" id="category-nav-wrap" aria-label="Categories">
       <div class="category-segmented" id="category-segmented">
@@ -104,7 +124,7 @@
       </div>
     </nav>
 
-    <!-- Links List -->
+    <!-- Links & Left-Aligned Category Sections -->
     <section class="links-section" aria-label="Curated Links">
       <div id="links-list" class="links-list">
         <!-- Populated dynamically by app.js -->

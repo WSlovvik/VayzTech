@@ -46,7 +46,6 @@ export async function ensureInitialized(db) {
     );
   }
 
-  // Create base tables if they do not exist yet
   await db.batch([
     db.prepare(`
       CREATE TABLE IF NOT EXISTS profile (
@@ -55,10 +54,25 @@ export async function ensureInitialized(db) {
         handle TEXT NOT NULL DEFAULT '@vayztech',
         bio TEXT NOT NULL DEFAULT 'Next-gen consumer tech, desk architecture & software workflows. Featured on TikTok.',
         avatar_url TEXT NOT NULL DEFAULT '',
+        avatar_color INTEGER NOT NULL DEFAULT 1,
+        bg_image_url TEXT NOT NULL DEFAULT '',
+        bg_blur INTEGER NOT NULL DEFAULT 28,
         tiktok_url TEXT NOT NULL DEFAULT 'https://www.tiktok.com/@vayztech',
         email TEXT NOT NULL DEFAULT 'hello@vayztech.com',
         theme_default TEXT NOT NULL DEFAULT 'light',
         updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+      )
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS carousel_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        url TEXT NOT NULL,
+        image_url TEXT NOT NULL DEFAULT '',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
       )
     `),
     db.prepare(`
@@ -67,6 +81,7 @@ export async function ensureInitialized(db) {
         name TEXT NOT NULL,
         slug TEXT NOT NULL DEFAULT '',
         url TEXT NOT NULL DEFAULT '',
+        display_type TEXT NOT NULL DEFAULT 'filter',
         sort_order INTEGER NOT NULL DEFAULT 0,
         active INTEGER NOT NULL DEFAULT 1,
         created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
@@ -121,7 +136,25 @@ export async function ensureInitialized(db) {
     `),
   ]);
 
-  // Safe migrations for existing databases created with an older schema
+  // Safe migrations for existing databases
+  const { results: profCols } = await db.prepare('PRAGMA table_info(profile)').all();
+  const profColNames = (profCols || []).map((c) => c.name);
+  if (!profColNames.includes('avatar_color')) {
+    await db.prepare('ALTER TABLE profile ADD COLUMN avatar_color INTEGER NOT NULL DEFAULT 1').run();
+  }
+  if (!profColNames.includes('bg_image_url')) {
+    await db.prepare("ALTER TABLE profile ADD COLUMN bg_image_url TEXT NOT NULL DEFAULT ''").run();
+  }
+  if (!profColNames.includes('bg_blur')) {
+    await db.prepare('ALTER TABLE profile ADD COLUMN bg_blur INTEGER NOT NULL DEFAULT 28').run();
+  }
+
+  const { results: catCols } = await db.prepare('PRAGMA table_info(categories)').all();
+  const catColNames = (catCols || []).map((c) => c.name);
+  if (!catColNames.includes('display_type')) {
+    await db.prepare("ALTER TABLE categories ADD COLUMN display_type TEXT NOT NULL DEFAULT 'filter'").run();
+  }
+
   const { results: linkCols } = await db.prepare('PRAGMA table_info(links)').all();
   const colNames = (linkCols || []).map((c) => c.name);
   if (!colNames.includes('image_url')) {
@@ -138,10 +171,10 @@ export async function ensureInitialized(db) {
 
   if (catCountRow && catCountRow.count === 0) {
     await db.batch([
-      db.prepare(`INSERT INTO categories (id, name, slug, url, sort_order, active) VALUES (1, 'Hardware', 'hardware', '', 1, 1)`),
-      db.prepare(`INSERT INTO categories (id, name, slug, url, sort_order, active) VALUES (2, 'Software', 'software', '', 2, 1)`),
-      db.prepare(`INSERT INTO categories (id, name, slug, url, sort_order, active) VALUES (3, 'Wallpapers', 'wallpapers', '', 3, 1)`),
-      db.prepare(`INSERT INTO categories (id, name, slug, url, sort_order, active) VALUES (4, 'TikTok Feed ↗', 'tiktok-feed', 'https://www.tiktok.com/@vayztech', 4, 1)`),
+      db.prepare(`INSERT INTO categories (id, name, slug, url, display_type, sort_order, active) VALUES (1, 'Hardware', 'hardware', '', 'filter', 1, 1)`),
+      db.prepare(`INSERT INTO categories (id, name, slug, url, display_type, sort_order, active) VALUES (2, 'Software', 'software', '', 'filter', 2, 1)`),
+      db.prepare(`INSERT INTO categories (id, name, slug, url, display_type, sort_order, active) VALUES (3, 'Wallpapers', 'wallpapers', '', 'section', 3, 1)`),
+      db.prepare(`INSERT INTO categories (id, name, slug, url, display_type, sort_order, active) VALUES (4, 'TikTok Feed ↗', 'tiktok-feed', 'https://www.tiktok.com/@vayztech', 'link', 4, 1)`),
     ]);
   }
 
