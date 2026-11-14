@@ -2,11 +2,17 @@ import { onRequestGet as dataGet } from './functions/api/data.js';
 import { onRequestGet as authGet, onRequestPost as authPost } from './functions/api/auth.js';
 import { onRequestPut as profilePut } from './functions/api/profile.js';
 import {
+  onRequestPost as categoriesPost,
+  onRequestPut as categoriesPut,
+  onRequestDelete as categoriesDelete,
+} from './functions/api/categories.js';
+import {
   onRequestPost as linksPost,
   onRequestPut as linksPut,
   onRequestDelete as linksDelete,
 } from './functions/api/links.js';
 import { onRequestPost as clickPost } from './functions/api/click.js';
+import { onRequestGet as tiktokAvatarGet } from './functions/api/tiktok-avatar.js';
 import { jsonResponse } from './functions/api/_utils.js';
 
 export default {
@@ -27,6 +33,11 @@ export default {
     if (path === '/api/profile' && method === 'PUT') {
       return profilePut(context);
     }
+    if (path === '/api/categories') {
+      if (method === 'POST') return categoriesPost(context);
+      if (method === 'PUT') return categoriesPut(context);
+      if (method === 'DELETE') return categoriesDelete(context);
+    }
     if (path === '/api/links') {
       if (method === 'POST') return linksPost(context);
       if (method === 'PUT') return linksPut(context);
@@ -35,11 +46,14 @@ export default {
     if (path === '/api/click' && method === 'POST') {
       return clickPost(context);
     }
+    if (path === '/api/tiktok-avatar' && method === 'GET') {
+      return tiktokAvatarGet(context);
+    }
     if (path.startsWith('/api/')) {
       return jsonResponse({ ok: false, error: 'Not found' }, 404);
     }
 
-    // Serve static assets (index.html, styles.css, app.js)
+    // Serve static assets (index.html, admin.html, styles.css, app.js, admin.js)
     if (env.ASSETS) {
       return env.ASSETS.fetch(request);
     }

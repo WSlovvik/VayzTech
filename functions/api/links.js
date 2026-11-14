@@ -13,7 +13,9 @@ export async function onRequestPost(context) {
     const title = (body.title || '').trim();
     const subtitle = (body.subtitle || '').trim();
     const url = (body.url || '').trim();
-    const category = (body.category || 'Featured').trim();
+    const category_id = Number(body.category_id || 1);
+    const category = (body.category || 'Hardware').trim();
+    const image_url = (body.image_url || '').trim();
     const badge = (body.badge || '').trim();
     const icon = (body.icon || 'arrow-up-right').trim();
     const active = body.active === false || body.active === 0 ? 0 : 1;
@@ -22,15 +24,17 @@ export async function onRequestPost(context) {
       return jsonResponse({ ok: false, error: 'Title and URL are required.' }, 400);
     }
 
-    const maxRow = await env.DB.prepare('SELECT COALESCE(MAX(sort_order), 0) as maxOrder FROM links').first();
+    const maxRow = await env.DB.prepare(
+      'SELECT COALESCE(MAX(sort_order), 0) as maxOrder FROM links'
+    ).first();
     const sort_order =
       typeof body.sort_order === 'number' ? body.sort_order : (maxRow?.maxOrder || 0) + 1;
 
     await env.DB.prepare(
-      `INSERT INTO links (title, subtitle, url, category, badge, icon, sort_order, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO links (title, subtitle, url, category_id, category, image_url, badge, icon, sort_order, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-      .bind(title, subtitle, url, category, badge, icon, sort_order, active)
+      .bind(title, subtitle, url, category_id, category, image_url, badge, icon, sort_order, active)
       .run();
 
     const { results: links } = await env.DB.prepare(
@@ -54,7 +58,6 @@ export async function onRequestPut(context) {
 
     const body = await request.json();
 
-    // Support batch reordering
     if (Array.isArray(body.order)) {
       const statements = body.order.map((item, idx) =>
         env.DB.prepare('UPDATE links SET sort_order = ? WHERE id = ?').bind(idx + 1, item.id)
@@ -76,7 +79,9 @@ export async function onRequestPut(context) {
     const title = (body.title || '').trim();
     const subtitle = (body.subtitle || '').trim();
     const url = (body.url || '').trim();
-    const category = (body.category || 'Featured').trim();
+    const category_id = Number(body.category_id || 1);
+    const category = (body.category || 'Hardware').trim();
+    const image_url = (body.image_url || '').trim();
     const badge = (body.badge || '').trim();
     const icon = (body.icon || 'arrow-up-right').trim();
     const active = body.active === false || body.active === 0 ? 0 : 1;
@@ -84,10 +89,22 @@ export async function onRequestPut(context) {
 
     await env.DB.prepare(
       `UPDATE links
-       SET title = ?, subtitle = ?, url = ?, category = ?, badge = ?, icon = ?, sort_order = ?, active = ?
+       SET title = ?, subtitle = ?, url = ?, category_id = ?, category = ?, image_url = ?, badge = ?, icon = ?, sort_order = ?, active = ?
        WHERE id = ?`
     )
-      .bind(title, subtitle, url, category, badge, icon, sort_order, active, id)
+      .bind(
+        title,
+        subtitle,
+        url,
+        category_id,
+        category,
+        image_url,
+        badge,
+        icon,
+        sort_order,
+        active,
+        id
+      )
       .run();
 
     const { results: links } = await env.DB.prepare(

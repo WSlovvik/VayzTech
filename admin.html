@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>VayzTech Studio — Visual Creator</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#FFFFFF" id="meta-theme-color" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="studio-body">
+  <!-- Studio Top Header -->
+  <header class="studio-topbar">
+    <div class="studio-topbar-left">
+      <a href="/" class="studio-back-link" title="Back to public page">
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Live Page</span>
+      </a>
+      <span class="studio-divider">/</span>
+      <div class="studio-brand">
+        <span class="status-dot" id="studio-db-dot"></span>
+        <span class="studio-title">VayzTech Visual Studio</span>
+        <span class="studio-badge" id="studio-db-badge">Cloudflare D1</span>
+      </div>
+    </div>
+
+    <div class="studio-topbar-right">
+      <button type="button" class="icon-btn" id="studio-theme-toggle" title="Switch Light / Dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+      <button type="button" class="btn-ghost-sm hidden" id="studio-logout-btn">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- VIEW 1: FULL-PAGE LOGIN SCREEN                                        -->
+  <!-- ===================================================================== -->
+  <main id="studio-login-screen" class="studio-login-screen">
+    <div class="studio-login-card">
+      <div class="studio-login-header">
+        <span class="modal-eyebrow">AUTHENTICATION</span>
+        <h1 class="studio-login-title">Sign in to Studio</h1>
+        <p class="studio-login-desc">Enter your administrator credentials to launch the visual creator.</p>
+      </div>
+
+      <form id="studio-login-form" class="apple-form">
+        <div class="form-group">
+          <label for="login-username">Username</label>
+          <input type="text" id="login-username" placeholder="Username" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required />
+        </div>
+        <div id="login-error" class="form-notice hidden"></div>
+        <button type="submit" class="btn-primary btn-full">Open Visual Creator</button>
+      </form>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- VIEW 2: VISUAL STUDIO WORKSPACE (Editor + Live Device Preview)        -->
+  <!-- ===================================================================== -->
+  <div id="studio-workspace" class="studio-workspace hidden">
+    <!-- Left Column: Visual Builder Controls -->
+    <section class="studio-editor-col">
+      <!-- Navigation Pills -->
+      <div class="studio-nav-tabs">
+        <button type="button" class="studio-nav-tab active" data-pane="builder">
+          1. Categories &amp; Links Builder
+        </button>
+        <button type="button" class="studio-nav-tab" data-pane="profile">
+          2. Profile &amp; TikTok Avatar
+        </button>
+        <button type="button" class="studio-nav-tab" data-pane="security">
+          3. Security
+        </button>
+      </div>
+
+      <!-- PANE 1: CATEGORIES & LINKS VISUAL BUILDER -->
+      <div id="pane-builder" class="studio-pane">
+        <!-- Categories Section -->
+        <div class="studio-card">
+          <div class="studio-card-header">
+            <div>
+              <span class="modal-eyebrow">STEP 1 &bull; CATEGORIES BAR</span>
+              <h2 class="studio-card-title">Categories &amp; Action Pills</h2>
+              <p class="studio-card-subtitle">
+                Create standard categories (to group links) or <strong>Clickable Link Categories</strong> that always look highlighted like the active category pill and open a URL directly.
+              </p>
+            </div>
+            <button type="button" class="btn-primary btn-sm" id="add-category-btn">+ New Category</button>
+          </div>
+
+          <!-- Category Editor Form -->
+          <form id="category-form" class="editor-card hidden">
+            <div class="editor-card-header">
+              <h4 id="category-form-title">Create Category</h4>
+              <button type="button" class="btn-ghost-sm" id="cancel-category-btn">Cancel</button>
+            </div>
+            <input type="hidden" id="cat-id" value="" />
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="cat-name">Category Title *</label>
+                <input type="text" id="cat-name" placeholder="e.g. Hardware, Desk Setup, Shop ↗" required />
+              </div>
+              <div class="form-group">
+                <label for="cat-type">Category Behavior</label>
+                <select id="cat-type">
+                  <option value="filter">Standard Category (Holds Links Inside)</option>
+                  <option value="link">Clickable Active Pill (Opens Direct URL)</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="cat-url-group" class="form-group hidden">
+              <label for="cat-url">Direct Destination URL * (Styled as Active Highlighted Category)</label>
+              <input type="url" id="cat-url" placeholder="https://www.tiktok.com/@vayztech" />
+            </div>
+
+            <div class="form-row-between">
+              <label class="checkbox-label">
+                <input type="checkbox" id="cat-active" checked />
+                <span>Visible on page</span>
+              </label>
+              <button type="submit" class="btn-primary btn-sm">Save Category</button>
+            </div>
+          </form>
+
+          <!-- Categories Visual Pills Bar -->
+          <div id="studio-categories-list" class="studio-categories-list"></div>
+        </div>
+
+        <!-- Links Inside Selected Category Section -->
+        <div class="studio-card">
+          <div class="studio-card-header">
+            <div>
+              <span class="modal-eyebrow" id="active-cat-eyebrow">STEP 2 &bull; ITEMS IN CATEGORY</span>
+              <h2 class="studio-card-title" id="active-cat-heading">Links in Category</h2>
+              <p class="studio-card-subtitle">
+                Upload a thumbnail photo (displayed before the title) or choose a monochrome icon, set the title, and destination link.
+              </p>
+            </div>
+            <button type="button" class="btn-primary btn-sm" id="add-link-btn">+ Add Link to Category</button>
+          </div>
+
+          <!-- Link Visual Editor Form -->
+          <form id="link-form" class="editor-card hidden">
+            <div class="editor-card-header">
+              <h4 id="link-form-title">Add Link</h4>
+              <button type="button" class="btn-ghost-sm" id="cancel-link-btn">Cancel</button>
+            </div>
+            <input type="hidden" id="link-id" value="" />
+
+            <!-- Thumbnail Upload Row (Displayed Before Title) -->
+            <div class="upload-row">
+              <div class="upload-preview-box" id="link-img-preview-box">
+                <img id="link-img-preview" src="" alt="Thumbnail" class="upload-preview-img hidden" />
+                <span id="link-img-placeholder" class="upload-placeholder-text">No Photo</span>
+              </div>
+              <div class="upload-controls">
+                <label class="upload-label-title">Thumbnail Photo (Displayed Before Title)</label>
+                <p class="upload-help">Upload an image from your device (auto-optimized for D1) or paste an image URL.</p>
+                <div class="upload-btn-group">
+                  <label class="btn-ghost-sm upload-file-btn">
+                    <input type="file" id="link-image-file" accept="image/*" class="hidden" />
+                    <span>Upload Photo...</span>
+                  </label>
+                  <button type="button" class="btn-ghost-sm hidden" id="clear-link-img-btn">Remove Photo</button>
+                </div>
+                <input type="text" id="link-image-url" class="upload-url-input" placeholder="Or paste image URL / data URI..." />
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="link-title">Title *</label>
+                <input type="text" id="link-title" placeholder="e.g. Mac Studio M4 Desk Setup" required />
+              </div>
+              <div class="form-group">
+                <label for="link-url">Destination Link (URL) *</label>
+                <input type="url" id="link-url" placeholder="https://..." required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="link-subtitle">Subtitle / Description (Optional)</label>
+              <input type="text" id="link-subtitle" placeholder="Short description below the title" />
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label for="link-category-select">Category</label>
+                <select id="link-category-select"></select>
+              </div>
+              <div class="form-group">
+                <label for="link-badge">Badge (Optional)</label>
+                <input type="text" id="link-badge" placeholder="New, Hot, Free" />
+              </div>
+              <div class="form-group">
+                <label for="link-icon">Fallback Icon (if no photo)</label>
+                <select id="link-icon">
+                  <option value="arrow-up-right">Arrow Up-Right</option>
+                  <option value="monitor">Monitor / Hardware</option>
+                  <option value="cpu">CPU / AI / Tech</option>
+                  <option value="layers">Layers / Downloads</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="mail">Mail / Contact</option>
+                  <option value="code">Code / GitHub</option>
+                  <option value="shopping-bag">Store / Gear</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row-between">
+              <label class="checkbox-label">
+                <input type="checkbox" id="link-active" checked />
+                <span>Visible on public page</span>
+              </label>
+              <button type="submit" class="btn-primary btn-sm">Save Link</button>
+            </div>
+          </form>
+
+          <!-- Links List for Active Category -->
+          <div id="studio-links-list" class="admin-links-list"></div>
+        </div>
+      </div>
+
+      <!-- PANE 2: PROFILE & AVATAR UPLOAD / TIKTOK AUTO-SYNC -->
+      <div id="pane-profile" class="studio-pane hidden">
+        <div class="studio-card">
+          <div class="studio-card-header">
+            <div>
+              <span class="modal-eyebrow">BRAND IDENTITY</span>
+              <h2 class="studio-card-title">Profile &amp; Avatar</h2>
+              <p class="studio-card-subtitle">
+                Upload a custom profile photo, or automatically pull your current profile picture from TikTok.
+              </p>
+            </div>
+          </div>
+
+          <form id="profile-form" class="apple-form">
+            <!-- Profile Avatar Uploader + TikTok Auto-Fetch -->
+            <div class="upload-row">
+              <div class="upload-preview-box upload-preview-avatar">
+                <img id="prof-avatar-preview" src="" alt="Avatar Preview" class="upload-preview-img hidden" />
+                <span id="prof-avatar-placeholder" class="upload-placeholder-text">VT</span>
+              </div>
+              <div class="upload-controls">
+                <label class="upload-label-title">Profile Picture</label>
+                <p class="upload-help">Upload an image from disk or click "Fetch from TikTok" to pull your avatar automatically.</p>
+                <div class="upload-btn-group">
+                  <label class="btn-primary btn-sm upload-file-btn">
+                    <input type="file" id="prof-avatar-file" accept="image/*" class="hidden" />
+                    <span>Upload Photo...</span>
+                  </label>
+                  <button type="button" class="btn-ghost-sm" id="fetch-tiktok-avatar-btn">
+                    Auto-Fetch from TikTok
+                  </button>
+                  <button type="button" class="btn-ghost-sm" id="clear-prof-avatar-btn">
+                    Use Monogram
+                  </button>
+                </div>
+                <input type="text" id="edit-avatar" class="upload-url-input" placeholder="Avatar image URL or uploaded data..." />
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="edit-title">Brand / Display Name</label>
+                <input type="text" id="edit-title" placeholder="VayzTech" required />
+              </div>
+              <div class="form-group">
+                <label for="edit-handle">TikTok Handle</label>
+                <input type="text" id="edit-handle" placeholder="@vayztech" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-bio">Short Bio (English)</label>
+              <textarea id="edit-bio" rows="2" placeholder="Next-gen consumer tech, desk architecture & software workflows."></textarea>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="edit-tiktok">TikTok Profile URL</label>
+                <input type="url" id="edit-tiktok" placeholder="https://www.tiktok.com/@vayztech" />
+              </div>
+              <div class="form-group">
+                <label for="edit-email">Contact Email Address</label>
+                <input type="email" id="edit-email" placeholder="hello@vayztech.com" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-theme">Default Theme for Visitors</label>
+              <select id="edit-theme">
+                <option value="light">Light Mode (Pure White &amp; Black)</option>
+                <option value="dark">Dark Mode (Apple Space Gray)</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn-primary btn-full">Save Profile &amp; Publish</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- PANE 3: SECURITY -->
+      <div id="pane-security" class="studio-pane hidden">
+        <div class="studio-card">
+          <div class="studio-card-header">
+            <div>
+              <span class="modal-eyebrow">CREDENTIALS</span>
+              <h2 class="studio-card-title">Admin Security</h2>
+              <p class="studio-card-subtitle">Update your administrator username and password stored in Cloudflare D1.</p>
+            </div>
+          </div>
+
+          <form id="security-form" class="apple-form">
+            <div class="form-group">
+              <label for="sec-username">Admin Username</label>
+              <input type="text" id="sec-username" placeholder="admin" required />
+            </div>
+            <div class="form-group">
+              <label for="sec-current-password">Current Password</label>
+              <input type="password" id="sec-current-password" placeholder="Enter current password" required />
+            </div>
+            <div class="form-group">
+              <label for="sec-new-password">New Password (min. 6 characters)</label>
+              <input type="password" id="sec-new-password" placeholder="Enter new password" required />
+            </div>
+            <button type="submit" class="btn-primary btn-full">Update Credentials</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Interactive iPhone Live Preview -->
+    <aside class="studio-preview-col">
+      <div class="preview-sticky">
+        <div class="preview-header-bar">
+          <span class="modal-eyebrow">LIVE INTERACTIVE PREVIEW</span>
+          <a href="/" target="_blank" class="preview-open-link">Open Full Tab &nearr;</a>
+        </div>
+        <div class="device-frame">
+          <div class="device-notch"></div>
+          <div class="device-screen" id="live-preview-root">
+            <!-- Rendered live by admin.js -->
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="/admin.js" defer></script>
+</body>
+</html>

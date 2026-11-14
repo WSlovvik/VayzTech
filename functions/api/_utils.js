@@ -1,4 +1,4 @@
-// Shared utilities & automatic D1 schema initialization for VayzTech
+// Shared utilities & automatic D1 schema initialization + migrations for VayzTech
 
 export function jsonResponse(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
@@ -42,11 +42,11 @@ export function getCookie(request, name) {
 export async function ensureInitialized(db) {
   if (!db) {
     throw new Error(
-      'Cloudflare D1 database binding "DB" is not configured. Please bind a D1 database named DB in Cloudflare Pages Settings -> Functions -> D1 database bindings.'
+      'Cloudflare D1 database binding "DB" is not configured. Bind a D1 database named DB in Cloudflare Settings -> Bindings.'
     );
   }
 
-  // Create tables if they do not exist yet
+  // Create base tables if they do not exist yet
   await db.batch([
     db.prepare(`
       CREATE TABLE IF NOT EXISTS profile (
@@ -62,12 +62,25 @@ export async function ensureInitialized(db) {
       )
     `),
     db.prepare(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL DEFAULT '',
+        url TEXT NOT NULL DEFAULT '',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+      )
+    `),
+    db.prepare(`
       CREATE TABLE IF NOT EXISTS links (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         subtitle TEXT NOT NULL DEFAULT '',
         url TEXT NOT NULL,
-        category TEXT NOT NULL DEFAULT 'Featured',
+        category_id INTEGER NOT NULL DEFAULT 1,
+        category TEXT NOT NULL DEFAULT 'Hardware',
+        image_url TEXT NOT NULL DEFAULT '',
         badge TEXT NOT NULL DEFAULT '',
         icon TEXT NOT NULL DEFAULT 'arrow-up-right',
         clicks INTEGER NOT NULL DEFAULT 0,
@@ -108,27 +121,43 @@ export async function ensureInitialized(db) {
     `),
   ]);
 
-  // Seed initial links if links table is completely empty and no admin has customized it yet
-  const countRow = await db.prepare('SELECT COUNT(*) as count FROM links').first();
+  // Safe migrations for existing databases created with an older schema
+  const { results: linkCols } = await db.prepare('PRAGMA table_info(links)').all();
+  const colNames = (linkCols || []).map((c) => c.name);
+  if (!colNames.includes('image_url')) {
+    await db.prepare("ALTER TABLE links ADD COLUMN image_url TEXT NOT NULL DEFAULT ''").run();
+  }
+  if (!colNames.includes('category_id')) {
+    await db.prepare('ALTER TABLE links ADD COLUMN category_id INTEGER NOT NULL DEFAULT 1').run();
+  }
+
+  // Seed initial categories & links if database is fresh
+  const catCountRow = await db.prepare('SELECT COUNT(*) as count FROM categories').first();
+  const linkCountRow = await db.prepare('SELECT COUNT(*) as count FROM links').first();
   const adminCountRow = await db.prepare('SELECT COUNT(*) as count FROM admins').first();
 
-  if (countRow && countRow.count === 0 && adminCountRow && adminCountRow.count === 0) {
+  if (catCountRow && catCountRow.count === 0) {
+    await db.batch([
+      db.prepare(`INSERT INTO categories (id, name, slug, url, sort_order, active) VALUES (1, 'Hardware', 'hardware', '', 1, 1)`),
+      db.prepare(`INSERT INTO categories (id, name, slug, url, sort_order, active) VALUES (2, 'Software', 'software', '', 2, 1)`),
+      db.prepare(`INSERT INTO categories (id, name, slug, url, sort_order, active) VALUES (3, 'Wallpapers', 'wallpapers', '', 3, 1)`),
+      db.prepare(`INSERT INTO categories (id, name, slug, url, sort_order, active) VALUES (4, 'TikTok Feed ↗', 'tiktok-feed', 'https://www.tiktok.com/@vayztech', 4, 1)`),
+    ]);
+  }
+
+  if (linkCountRow && linkCountRow.count === 0 && adminCountRow && adminCountRow.count === 0) {
     await db.batch([
       db.prepare(`
-        INSERT INTO links (title, subtitle, url, category, badge, icon, clicks, sort_order, active)
-        VALUES ('2026 Desk Setup & Gear List', 'Complete breakdown of monitors, peripherals, and lighting', 'https://www.tiktok.com/@vayztech', 'Hardware', 'Updated', 'monitor', 142, 1, 1)
+        INSERT INTO links (title, subtitle, url, category_id, category, image_url, badge, icon, clicks, sort_order, active)
+        VALUES ('2026 Desk Setup & Gear List', 'Complete breakdown of monitors, peripherals, and lighting', 'https://www.tiktok.com/@vayztech', 1, 'Hardware', '', 'Updated', 'monitor', 142, 1, 1)
       `),
       db.prepare(`
-        INSERT INTO links (title, subtitle, url, category, badge, icon, clicks, sort_order, active)
-        VALUES ('Top 5 AI & Productivity Apps', 'Tools featured in this week''s TikTok deep-dive', 'https://www.tiktok.com/@vayztech', 'Software', 'New', 'cpu', 98, 2, 1)
+        INSERT INTO links (title, subtitle, url, category_id, category, image_url, badge, icon, clicks, sort_order, active)
+        VALUES ('Top 5 AI & Productivity Apps', 'Tools featured in this week''s TikTok deep-dive', 'https://www.tiktok.com/@vayztech', 2, 'Software', '', 'New', 'cpu', 98, 2, 1)
       `),
       db.prepare(`
-        INSERT INTO links (title, subtitle, url, category, badge, icon, clicks, sort_order, active)
-        VALUES ('Minimalist Wallpaper Pack (Monochrome)', 'High-resolution 6K desktop & mobile backgrounds', 'https://www.tiktok.com/@vayztech', 'Downloads', 'Free', 'layers', 215, 3, 1)
-      `),
-      db.prepare(`
-        INSERT INTO links (title, subtitle, url, category, badge, icon, clicks, sort_order, active)
-        VALUES ('Sponsorships & Tech Reviews', 'Media kit, benchmarks, and collaboration inquiries', 'mailto:hello@vayztech.com', 'Contact', '', 'mail', 34, 4, 1)
+        INSERT INTO links (title, subtitle, url, category_id, category, image_url, badge, icon, clicks, sort_order, active)
+        VALUES ('Minimalist Wallpaper Pack (Monochrome)', 'High-resolution 6K desktop & mobile backgrounds', 'https://www.tiktok.com/@vayztech', 3, 'Wallpapers', '', 'Free', 'layers', 215, 3, 1)
       `),
     ]);
   }
