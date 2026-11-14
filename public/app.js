@@ -10,6 +10,9 @@ const DEFAULT_FALLBACK_STATE = {
     avatar_color: 1,
     bg_image_url: '',
     bg_blur: 28,
+    bg_overlay: 55,
+    cat_offset_y: 0,
+    carousel_interval: 5,
     tiktok_url: 'https://www.tiktok.com/@vayztech',
     email: 'hello@vayztech.com',
     theme_default: 'light',
@@ -180,19 +183,33 @@ function renderAll() {
     yearEl.textContent = new Date().getFullYear();
   }
 
-  // Blurred Background Image Layer
+  // Blurred Background Image Layer + Header Frosted Glass + Overlay Level
   const bgWrap = document.getElementById('bg-backdrop-wrap');
   const bgImg = document.getElementById('bg-backdrop-img');
+  const bgOverlay = document.getElementById('bg-backdrop-overlay');
   if (bgWrap && bgImg) {
     if ((profile.bg_image_url || '').trim()) {
+      document.body.classList.add('has-custom-bg');
       bgWrap.classList.remove('hidden');
       bgImg.style.backgroundImage = `url("${profile.bg_image_url.replace(/"/g, '\\"')}")`;
       const blurPx = Number(profile.bg_blur ?? 28);
       bgImg.style.filter = `blur(${blurPx}px)`;
+      if (bgOverlay) {
+        const overlayPct = Number(profile.bg_overlay ?? 55);
+        bgOverlay.style.opacity = String(Math.max(0, Math.min(100, overlayPct)) / 100);
+      }
     } else {
+      document.body.classList.remove('has-custom-bg');
       bgWrap.classList.add('hidden');
       bgImg.style.backgroundImage = '';
     }
+  }
+
+  // Category Bar Vertical Offset (Move Higher / Lower)
+  const navWrapEl = document.getElementById('category-nav-wrap');
+  if (navWrapEl) {
+    const offsetY = Number(profile.cat_offset_y ?? 0);
+    navWrapEl.style.marginTop = `${offsetY}px`;
   }
 
   // TikTok & Mail links (Logo click also goes to TikTok)
@@ -318,7 +335,17 @@ function renderCarousel(carouselItems) {
 
     document.getElementById('carousel-prev').onclick = () => scrollToSlide(activeSlideIdx - 1);
     document.getElementById('carousel-next').onclick = () => scrollToSlide(activeSlideIdx + 1);
+
+    // Auto-Rotate Timer
+    clearInterval(window.__carouselTimer);
+    const intervalSec = Number(appState.profile?.carousel_interval ?? 5);
+    if (intervalSec > 0) {
+      window.__carouselTimer = setInterval(() => {
+        scrollToSlide(activeSlideIdx + 1);
+      }, intervalSec * 1000);
+    }
   } else {
+    clearInterval(window.__carouselTimer);
     controls.classList.add('hidden');
   }
 }

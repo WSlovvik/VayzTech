@@ -91,7 +91,14 @@ body {
   z-index: 30;
   background-color: var(--bg-page);
   border-bottom: 1px solid var(--border-subtle);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, backdrop-filter 0.2s ease;
+}
+
+body.has-custom-bg .top-bar {
+  background-color: transparent;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(134, 134, 139, 0.22);
 }
 
 .top-bar-inner {
@@ -1448,7 +1455,7 @@ body {
   background-repeat: no-repeat;
   filter: blur(28px);
   transform: scale(1.08);
-  opacity: 0.42;
+  opacity: 1;
 }
 
 .bg-backdrop-overlay {
@@ -1456,6 +1463,7 @@ body {
   inset: 0;
   background: var(--bg-page);
   opacity: 0.55;
+  transition: opacity 0.15s ease, background-color 0.2s ease;
 }
 
 .top-bar,

@@ -57,6 +57,9 @@ export async function ensureInitialized(db) {
         avatar_color INTEGER NOT NULL DEFAULT 1,
         bg_image_url TEXT NOT NULL DEFAULT '',
         bg_blur INTEGER NOT NULL DEFAULT 28,
+        bg_overlay INTEGER NOT NULL DEFAULT 55,
+        cat_offset_y INTEGER NOT NULL DEFAULT 0,
+        carousel_interval INTEGER NOT NULL DEFAULT 5,
         tiktok_url TEXT NOT NULL DEFAULT 'https://www.tiktok.com/@vayztech',
         email TEXT NOT NULL DEFAULT 'hello@vayztech.com',
         theme_default TEXT NOT NULL DEFAULT 'light',
@@ -147,6 +150,15 @@ export async function ensureInitialized(db) {
   }
   if (!profColNames.includes('bg_blur')) {
     await db.prepare('ALTER TABLE profile ADD COLUMN bg_blur INTEGER NOT NULL DEFAULT 28').run();
+  }
+  if (!profColNames.includes('bg_overlay')) {
+    await db.prepare('ALTER TABLE profile ADD COLUMN bg_overlay INTEGER NOT NULL DEFAULT 55').run();
+  }
+  if (!profColNames.includes('cat_offset_y')) {
+    await db.prepare('ALTER TABLE profile ADD COLUMN cat_offset_y INTEGER NOT NULL DEFAULT 0').run();
+  }
+  if (!profColNames.includes('carousel_interval')) {
+    await db.prepare('ALTER TABLE profile ADD COLUMN carousel_interval INTEGER NOT NULL DEFAULT 5').run();
   }
 
   const { results: catCols } = await db.prepare('PRAGMA table_info(categories)').all();

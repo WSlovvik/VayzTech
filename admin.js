@@ -12,6 +12,9 @@ const DEFAULT_FALLBACK_STATE = {
     avatar_color: 1,
     bg_image_url: '',
     bg_blur: 28,
+    bg_overlay: 55,
+    cat_offset_y: 0,
+    carousel_interval: 5,
     tiktok_url: 'https://www.tiktok.com/@vayztech',
     email: 'hello@vayztech.com',
     theme_default: 'light',
@@ -768,6 +771,15 @@ function populateProfileForm() {
   const blurVal = Number(p.bg_blur ?? 28);
   document.getElementById('edit-bg-blur').value = blurVal;
   document.getElementById('bg-blur-val').textContent = blurVal;
+  const overlayVal = Number(p.bg_overlay ?? 55);
+  document.getElementById('edit-bg-overlay').value = overlayVal;
+  document.getElementById('bg-overlay-val').textContent = overlayVal;
+  const catOffsetVal = Number(p.cat_offset_y ?? 0);
+  document.getElementById('edit-cat-offset').value = catOffsetVal;
+  document.getElementById('cat-offset-val').textContent = catOffsetVal;
+  const carouselIntVal = Number(p.carousel_interval ?? 5);
+  document.getElementById('edit-carousel-interval').value = carouselIntVal;
+  document.getElementById('carousel-interval-val').textContent = carouselIntVal;
   document.getElementById('edit-theme').value = p.theme_default || 'light';
   document.getElementById('sec-username').value = studioState.adminUser || 'admin';
 
@@ -799,11 +811,13 @@ function renderLivePreview() {
   // Blurred Background inside device screen
   const hasBg = Boolean((profile.bg_image_url || '').trim());
   const blurPx = Number(profile.bg_blur ?? 28);
+  const overlayOpacity = Math.max(0, Math.min(100, Number(profile.bg_overlay ?? 55))) / 100;
   const bgLayerHtml = hasBg
     ? `<div style="position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;">
          <div style="position:absolute;inset:-24px;background-image:url('${escapeHtml(
            profile.bg_image_url
-         )}');background-size:cover;background-position:center;filter:blur(${blurPx}px);opacity:0.42;"></div>
+         )}');background-size:cover;background-position:center;filter:blur(${blurPx}px);"></div>
+         <div style="position:absolute;inset:0;background:var(--bg-page);opacity:${overlayOpacity};"></div>
        </div>`
     : '';
 
@@ -845,9 +859,10 @@ function renderLivePreview() {
 
   // Filter & Link Category Pills
   const barCats = visibleCats.filter((c) => c.display_type !== 'section');
+  const catOffsetY = Number(profile.cat_offset_y ?? 0);
   const catPillsHtml =
     barCats.length > 0
-      ? `<div class="category-filter-wrap" style="margin-bottom:14px;">
+      ? `<div class="category-filter-wrap" style="margin-bottom:14px;margin-top:${catOffsetY}px;">
            <div class="category-segmented">
              <button type="button" class="segment-btn ${
                previewCatId === 'all' ? 'active' : ''
@@ -1298,6 +1313,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('edit-bg-blur').addEventListener('input', (e) => {
     document.getElementById('bg-blur-val').textContent = e.target.value;
+    studioState.profile.bg_blur = Number(e.target.value);
+    renderLivePreview();
+  });
+
+  document.getElementById('edit-bg-overlay').addEventListener('input', (e) => {
+    document.getElementById('bg-overlay-val').textContent = e.target.value;
+    studioState.profile.bg_overlay = Number(e.target.value);
+    renderLivePreview();
+  });
+
+  document.getElementById('edit-cat-offset').addEventListener('input', (e) => {
+    document.getElementById('cat-offset-val').textContent = e.target.value;
+    studioState.profile.cat_offset_y = Number(e.target.value);
+    renderLivePreview();
+  });
+
+  document.getElementById('edit-carousel-interval').addEventListener('input', (e) => {
+    document.getElementById('carousel-interval-val').textContent = e.target.value;
+    studioState.profile.carousel_interval = Number(e.target.value);
+  });
+
+  async function saveProfileSettingsQuick(toastMsg) {
+    const payload = {
+      ...studioState.profile,
+      title: document.getElementById('edit-title').value.trim() || studioState.profile.title,
+      handle: document.getElementById('edit-handle').value.trim() || studioState.profile.handle,
+      bio: document.getElementById('edit-bio').value,
+      tiktok_url: document.getElementById('edit-tiktok').value.trim(),
+      email: document.getElementById('edit-email').value.trim(),
+      avatar_url: document.getElementById('edit-avatar').value.trim(),
+      avatar_color: document.getElementById('edit-avatar-color').checked ? 1 : 0,
+      bg_image_url: document.getElementById('edit-bg-image').value.trim(),
+      bg_blur: Number(document.getElementById('edit-bg-blur').value ?? 28),
+      bg_overlay: Number(document.getElementById('edit-bg-overlay').value ?? 55),
+      cat_offset_y: Number(document.getElementById('edit-cat-offset').value ?? 0),
+      carousel_interval: Number(document.getElementById('edit-carousel-interval').value ?? 5),
+      theme_default: document.getElementById('edit-theme').value,
+    };
+
+    if (studioState.dbConnected) {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.ok) studioState.profile = data.profile;
+    } else {
+      studioState.profile = { ...studioState.profile, ...payload };
+      saveLocalFallback();
+    }
+    renderStudio();
+    showToast(toastMsg);
+  }
+
+  document.getElementById('save-cat-offset-btn').addEventListener('click', () => {
+    saveProfileSettingsQuick('Category bar position saved');
+  });
+
+  document.getElementById('save-carousel-interval-btn').addEventListener('click', () => {
+    saveProfileSettingsQuick('Carousel auto-rotate timer saved');
   });
 
   document.getElementById('fetch-tiktok-avatar-btn').addEventListener('click', async () => {
@@ -1354,7 +1430,10 @@ document.addEventListener('DOMContentLoaded', () => {
       avatar_url: document.getElementById('edit-avatar').value.trim(),
       avatar_color: document.getElementById('edit-avatar-color').checked ? 1 : 0,
       bg_image_url: document.getElementById('edit-bg-image').value.trim(),
-      bg_blur: Number(document.getElementById('edit-bg-blur').value || 28),
+      bg_blur: Number(document.getElementById('edit-bg-blur').value ?? 28),
+      bg_overlay: Number(document.getElementById('edit-bg-overlay').value ?? 55),
+      cat_offset_y: Number(document.getElementById('edit-cat-offset').value ?? 0),
+      carousel_interval: Number(document.getElementById('edit-carousel-interval').value ?? 5),
       theme_default: document.getElementById('edit-theme').value,
     };
 

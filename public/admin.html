@@ -116,6 +116,17 @@
             <button type="button" class="btn-primary btn-sm" id="add-category-btn">+ New Category</button>
           </div>
 
+          <!-- Vertical Position Slider for Category Buttons Bar -->
+          <div class="editor-card" style="margin-bottom: 16px;">
+            <div class="blur-slider-row" style="margin-top: 0;">
+              <label for="edit-cat-offset" style="font-weight: 600; color: var(--text-primary);">
+                Category Bar Vertical Position (Move Up / Down): <span id="cat-offset-val">0</span>px
+              </label>
+              <input type="range" id="edit-cat-offset" min="-40" max="80" step="2" value="0" />
+              <button type="button" class="btn-ghost-sm" id="save-cat-offset-btn">Save Position</button>
+            </div>
+          </div>
+
           <!-- Category Editor Form -->
           <form id="category-form" class="editor-card hidden">
             <div class="editor-card-header">
@@ -266,6 +277,17 @@
             <button type="button" class="btn-primary btn-sm" id="add-slide-btn">+ Add Carousel Slide</button>
           </div>
 
+          <!-- Carousel Auto-Rotate Timer Control -->
+          <div class="editor-card" style="margin-bottom: 16px;">
+            <div class="blur-slider-row" style="margin-top: 0;">
+              <label for="edit-carousel-interval" style="font-weight: 600; color: var(--text-primary);">
+                Auto-Rotate Timer (Seconds per slide, 0 = Off): <span id="carousel-interval-val">5</span>s
+              </label>
+              <input type="range" id="edit-carousel-interval" min="0" max="20" step="1" value="5" />
+              <button type="button" class="btn-ghost-sm" id="save-carousel-interval-btn">Save Timer</button>
+            </div>
+          </div>
+
           <!-- Carousel Slide Editor Form -->
           <form id="carousel-form" class="editor-card hidden">
             <div class="editor-card-header">
@@ -386,7 +408,11 @@
                 <input type="text" id="edit-bg-image" class="upload-url-input" placeholder="Background image URL or uploaded data..." />
                 <div class="blur-slider-row">
                   <label for="edit-bg-blur">Blur Intensity: <span id="bg-blur-val">28</span>px</label>
-                  <input type="range" id="edit-bg-blur" min="4" max="64" step="2" value="28" />
+                  <input type="range" id="edit-bg-blur" min="0" max="64" step="2" value="28" />
+                </div>
+                <div class="blur-slider-row">
+                  <label for="edit-bg-overlay">Color Overlay Level (Tint Strength): <span id="bg-overlay-val">55</span>%</label>
+                  <input type="range" id="edit-bg-overlay" min="0" max="95" step="5" value="55" />
                 </div>
               </div>
             </div>
