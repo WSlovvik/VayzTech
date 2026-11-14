@@ -440,16 +440,63 @@ function buildLinkCardHtml(link) {
 }
 
 function renderPublicLinks(categories, links) {
+  const topSectionsWrap = document.getElementById('top-sections-wrap');
+  const topSectionsList = document.getElementById('top-sections-list');
   const container = document.getElementById('links-list');
   const visibleCats = (categories || []).filter((c) => Number(c.active) !== 0);
   const visibleLinks = (links || []).filter((l) => Number(l.active) !== 0);
 
   if (visibleLinks.length === 0) {
+    if (topSectionsWrap) topSectionsWrap.classList.add('hidden');
     container.innerHTML = `<div class="empty-state">No links available yet.</div>`;
     return;
   }
 
-  // If a specific filter category pill is selected, show links for that category
+  // Find index of the first filter/link pill category to know which 'section' categories were placed ABOVE the pill bar
+  const firstBarCatIdx = visibleCats.findIndex((c) => c.display_type !== 'section');
+
+  const topSectionCats = [];
+  const bottomSectionCats = [];
+
+  visibleCats.forEach((c, idx) => {
+    if (c.display_type === 'section') {
+      if (firstBarCatIdx === -1 || idx < firstBarCatIdx) {
+        topSectionCats.push(c);
+      } else {
+        bottomSectionCats.push(c);
+      }
+    }
+  });
+
+  // Render Top Section Categories ABOVE the category pills bar
+  if (topSectionsWrap && topSectionsList) {
+    const topHtmlParts = [];
+    topSectionCats.forEach((secCat) => {
+      const secLinks = visibleLinks.filter(
+        (l) =>
+          String(l.category_id) === String(secCat.id) ||
+          (l.category || '').toLowerCase() === secCat.name.toLowerCase()
+      );
+      if (secLinks.length > 0) {
+        topHtmlParts.push(`
+          <div class="category-section-group">
+            <h2 class="category-section-heading">${escapeHtml(secCat.name)}</h2>
+            ${secLinks.map(buildLinkCardHtml).join('')}
+          </div>
+        `);
+      }
+    });
+
+    if (topHtmlParts.length > 0) {
+      topSectionsWrap.classList.remove('hidden');
+      topSectionsList.innerHTML = topHtmlParts.join('');
+    } else {
+      topSectionsWrap.classList.add('hidden');
+      topSectionsList.innerHTML = '';
+    }
+  }
+
+  // If a specific filter category pill is selected, show links for that category below the bar
   if (selectedCategoryId !== 'all') {
     const selectedCatObj = visibleCats.find((c) => String(c.id) === String(selectedCategoryId));
     const filtered = visibleLinks.filter(
@@ -460,52 +507,45 @@ function renderPublicLinks(categories, links) {
 
     if (filtered.length === 0) {
       container.innerHTML = `<div class="empty-state">No links in this category yet.</div>`;
-      return;
+    } else {
+      container.innerHTML = filtered.map(buildLinkCardHtml).join('');
     }
-
-    container.innerHTML = filtered.map(buildLinkCardHtml).join('');
   } else {
     // When "All" is selected:
-    // Render standard links first, and render 'section' categories with their left-aligned category heading!
     const sectionCatIds = new Set(
       visibleCats.filter((c) => c.display_type === 'section').map((c) => String(c.id))
     );
 
     const standardLinks = visibleLinks.filter((l) => !sectionCatIds.has(String(l.category_id)));
-    let htmlParts = [];
+    const htmlParts = [];
 
     if (standardLinks.length > 0) {
       htmlParts.push(standardLinks.map(buildLinkCardHtml).join(''));
     }
 
-    // Render each Left-Aligned Section Category with its title on the left and its links underneath
-    visibleCats
-      .filter((c) => c.display_type === 'section')
-      .forEach((secCat) => {
-        const secLinks = visibleLinks.filter(
-          (l) =>
-            String(l.category_id) === String(secCat.id) ||
-            (l.category || '').toLowerCase() === secCat.name.toLowerCase()
-        );
-        if (secLinks.length > 0) {
-          htmlParts.push(`
-            <div class="category-section-group">
-              <h2 class="category-section-heading">${escapeHtml(secCat.name)}</h2>
-              ${secLinks.map(buildLinkCardHtml).join('')}
-            </div>
-          `);
-        }
-      });
+    // Render remaining 'section' categories that are ordered AFTER the first filter pill
+    bottomSectionCats.forEach((secCat) => {
+      const secLinks = visibleLinks.filter(
+        (l) =>
+          String(l.category_id) === String(secCat.id) ||
+          (l.category || '').toLowerCase() === secCat.name.toLowerCase()
+      );
+      if (secLinks.length > 0) {
+        htmlParts.push(`
+          <div class="category-section-group">
+            <h2 class="category-section-heading">${escapeHtml(secCat.name)}</h2>
+            ${secLinks.map(buildLinkCardHtml).join('')}
+          </div>
+        `);
+      }
+    });
 
-    container.innerHTML =
-      htmlParts.length > 0
-        ? htmlParts.join('')
-        : `<div class="empty-state">No links available yet.</div>`;
+    container.innerHTML = htmlParts.join('');
   }
 
-  // Attach click tracking
-  container.querySelectorAll('.link-card').forEach((card) => {
-    card.addEventListener('click', () => {
+  // Attach click tracking to all rendered cards (both top and bottom sections)
+  document.querySelectorAll('.link-card').forEach((card) => {
+    card.onclick = () => {
       const id = Number(card.getAttribute('data-link-id'));
       if (!id) return;
       if (appState.dbConnected) {
@@ -516,7 +556,7 @@ function renderPublicLinks(categories, links) {
           keepalive: true,
         }).catch(() => {});
       }
-    });
+    };
   });
 }
 

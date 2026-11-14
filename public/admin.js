@@ -911,6 +911,33 @@ function renderLivePreview() {
     `;
   };
 
+  const firstBarCatIdx = visibleCats.findIndex((c) => c.display_type !== 'section');
+  const topSectionCats = [];
+  const bottomSectionCats = [];
+
+  visibleCats.forEach((c, idx) => {
+    if (c.display_type === 'section') {
+      if (firstBarCatIdx === -1 || idx < firstBarCatIdx) {
+        topSectionCats.push(c);
+      } else {
+        bottomSectionCats.push(c);
+      }
+    }
+  });
+
+  const topSectionsHtml = topSectionCats
+    .map((sec) => {
+      const secLinks = visibleLinks.filter((l) => String(l.category_id) === String(sec.id));
+      if (secLinks.length === 0) return '';
+      return `
+        <div class="category-section-group" style="margin-bottom:16px;">
+          <h2 class="category-section-heading">${escapeHtml(sec.name)}</h2>
+          ${secLinks.map(renderCard).join('')}
+        </div>
+      `;
+    })
+    .join('');
+
   let linksContentHtml = '';
   if (previewCatId !== 'all') {
     const filtered = visibleLinks.filter((l) => String(l.category_id) === String(previewCatId));
@@ -927,20 +954,18 @@ function renderLivePreview() {
     if (standardLinks.length > 0) {
       parts.push(standardLinks.map(renderCard).join(''));
     }
-    visibleCats
-      .filter((c) => c.display_type === 'section')
-      .forEach((sec) => {
-        const secLinks = visibleLinks.filter((l) => String(l.category_id) === String(sec.id));
-        if (secLinks.length > 0) {
-          parts.push(`
-            <div class="category-section-group">
-              <h2 class="category-section-heading">${escapeHtml(sec.name)}</h2>
-              ${secLinks.map(renderCard).join('')}
-            </div>
-          `);
-        }
-      });
-    linksContentHtml = parts.join('') || `<div class="empty-state">No links yet.</div>`;
+    bottomSectionCats.forEach((sec) => {
+      const secLinks = visibleLinks.filter((l) => String(l.category_id) === String(sec.id));
+      if (secLinks.length > 0) {
+        parts.push(`
+          <div class="category-section-group">
+            <h2 class="category-section-heading">${escapeHtml(sec.name)}</h2>
+            ${secLinks.map(renderCard).join('')}
+          </div>
+        `);
+      }
+    });
+    linksContentHtml = parts.join('');
   }
 
   root.innerHTML = `
@@ -955,6 +980,7 @@ function renderLivePreview() {
         <p class="profile-bio" style="font-size:13px;margin-bottom:14px;">${escapeHtml(profile.bio)}</p>
       </div>
       ${carouselHtml}
+      ${topSectionsHtml}
       ${catPillsHtml}
       <div class="links-list">${linksContentHtml}</div>
     </div>
